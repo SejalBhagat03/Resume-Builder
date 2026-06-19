@@ -1,4 +1,5 @@
 import * as React from "react";
+import { getStorageKey, storageGet, storageSet, storageRemove } from "@/lib/storage";
 
 export type Education = { degree: string; school: string; year: string; cgpa?: string };
 export type Experience = { role: string; company: string; period: string; bullets: string[] };
@@ -11,7 +12,7 @@ export type Achievement = { title: string; detail: string };
 export type Profile = {
   // Personal
   fullName: string;
-  title: string; // e.g. "Full Stack Developer"
+  title: string;
   email: string;
   phone: string;
   location: string;
@@ -30,7 +31,19 @@ export type Profile = {
   achievements: Achievement[];
 };
 
-const KEY = "rbp.profile.v1";
+// ─── Module-level auth state ─────────────────────────────────────────────────
+let _activeUserId: string | null = null;
+
+function getKey(): string {
+  return getStorageKey("profile", _activeUserId);
+}
+
+/** Call this whenever auth state changes (login / logout). */
+export function setActiveProfileUser(userId: string | null): void {
+  _activeUserId = userId;
+}
+
+// ─── Empty / blank profile ───────────────────────────────────────────────────
 
 export function emptyProfile(): Profile {
   return {
@@ -53,114 +66,115 @@ export function emptyProfile(): Profile {
   };
 }
 
-function seedProfile(): Profile {
-  return {
-    fullName: "Sejal Bhagat",
-    title: "Full Stack Developer",
-    email: "sejal@example.com",
-    phone: "+91 90000 00000",
-    location: "Bengaluru, India",
-    summary:
-      "Full Stack Developer with hands-on experience building production React + Node.js applications. Strong focus on shipping measurable outcomes and writing maintainable TypeScript.",
-    github: "github.com/sejal",
-    linkedin: "linkedin.com/in/sejal",
-    portfolio: "sejal.dev",
-    education: [
-      {
-        degree: "B.Tech, Computer Science",
-        school: "VIT University",
-        year: "2022 – 2026",
-        cgpa: "8.7",
-      },
-    ],
-    experience: [
-      {
-        role: "Software Engineer Intern",
-        company: "Acme Cloud",
-        period: "Jun 2025 – Aug 2025",
-        bullets: [
-          "Shipped a billing dashboard feature used by 10k+ paying customers.",
-          "Reduced API latency by 32% by introducing Redis caching for hot endpoints.",
-        ],
-      },
-    ],
-    projects: [
-      {
-        name: "Resume Builder Pro",
-        tools: "React, TypeScript, Tailwind",
-        bullets: [
-          "Built a step-by-step resume editor with live preview and ATS scoring.",
-          "Integrated AI-assisted bullet improvement and JD matching.",
-        ],
-      },
-      {
-        name: "Realtime Chat App",
-        tools: "Node.js, Socket.IO, Postgres",
-        bullets: [
-          "Designed message persistence layer handling 500 msgs/sec.",
-          "Implemented presence and typing indicators.",
-        ],
-      },
-    ],
-    skills: [
-      { category: "Languages", items: "TypeScript, JavaScript, Python, SQL" },
-      { category: "Frameworks", items: "React, Next.js, Node.js, Express" },
-      { category: "Tools", items: "Git, Docker, Postgres, Redis" },
-    ],
-    certifications: [
-      { name: "AWS Cloud Practitioner", issuer: "Amazon Web Services", year: "2025" },
-    ],
-    languages: [
-      { name: "English", level: "Fluent" },
-      { name: "Hindi", level: "Native" },
-    ],
-    achievements: [
-      { title: "Smart India Hackathon Finalist", detail: "Top 12 nationally out of 4,000+ teams." },
-    ],
-  };
-}
+// ─── Low-level read / write ──────────────────────────────────────────────────
 
 function read(): Profile {
-  if (typeof window === "undefined") return seedProfile();
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      const s = seedProfile();
-      localStorage.setItem(KEY, JSON.stringify(s));
-      return s;
-    }
-    return { ...emptyProfile(), ...(JSON.parse(raw) as Profile) };
-  } catch {
-    return seedProfile();
+  return { ...emptyProfile(), ...(storageGet<Profile>(getKey()) ?? {}) };
+}
+
+function write(p: Profile): void {
+  storageSet(getKey(), p);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("rbp:profile-changed"));
   }
 }
 
-function write(p: Profile) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(p));
-  window.dispatchEvent(new Event("rbp:profile-changed"));
+// ─── Migration ───────────────────────────────────────────────────────────────
+
+/**
+ * On login, migrate profile data from the anonymous scope (or old global key)
+ * into the authenticated user's namespace — but only if the user doesn't already
+ * have a profile (to avoid overwriting existing data).
+ */
+export function migrateLocalProfileToUser(userId: string): void {
+  const userKey = getStorageKey("profile", userId);
+  const existingUser = storageGet<Profile>(userKey);
+
+  // Don't overwrite an existing saved profile
+  if (existingUser && existingUser.fullName) return;
+
+  const legacyKeys = [
+    getStorageKey("profile", null), // anonymous scope
+    "rbp.profile.v1", // old global key (pre user-scoping)
+  ].filter((k) => k !== userKey);
+
+  for (const srcKey of legacyKeys) {
+    const srcData = storageGet<Profile>(srcKey);
+    if (srcData && srcData.fullName) {
+      storageSet(userKey, srcData);
+      storageRemove(srcKey);
+      return; // Use the first non-empty source found
+    }
+  }
+
+  // Clean up any leftover empty anonymous keys
+  for (const srcKey of legacyKeys) {
+    storageRemove(srcKey);
+  }
 }
+
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export function getProfile(): Profile {
   return read();
 }
 
-export function saveProfile(p: Profile) {
+export function saveProfile(p: Profile): void {
   write(p);
 }
 
+// ─── useProfile hook ─────────────────────────────────────────────────────────
+
 export function useProfile(): [Profile, (updater: (p: Profile) => Profile) => void] {
-  const [profile, setProfile] = React.useState<Profile>(seedProfile);
+  const [profile, setProfile] = React.useState<Profile>(emptyProfile);
+
   React.useEffect(() => {
-    const sync = () => setProfile(read());
-    sync();
-    window.addEventListener("rbp:profile-changed", sync);
-    window.addEventListener("storage", sync);
+    let active = true;
+
+    function syncForUser(userId: string | null) {
+      setActiveProfileUser(userId);
+      if (userId) {
+        migrateLocalProfileToUser(userId);
+      }
+      if (active) setProfile(read());
+    }
+
+    // Initialize with current session
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        syncForUser(session?.user?.id ?? null);
+      });
+
+      // React to login / logout
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        syncForUser(session?.user?.id ?? null);
+      });
+
+      const handleLocalChange = () => {
+        if (active) setProfile(read());
+      };
+      window.addEventListener("rbp:profile-changed", handleLocalChange);
+      window.addEventListener("storage", handleLocalChange);
+
+      // Cleanup stored in a ref so it survives the async boundary
+      (window as unknown as Record<string, unknown>).__rbpProfileCleanup = () => {
+        active = false;
+        subscription.unsubscribe();
+        window.removeEventListener("rbp:profile-changed", handleLocalChange);
+        window.removeEventListener("storage", handleLocalChange);
+      };
+    });
+
     return () => {
-      window.removeEventListener("rbp:profile-changed", sync);
-      window.removeEventListener("storage", sync);
+      active = false;
+      const cleanup = (window as unknown as Record<string, unknown>)
+        .__rbpProfileCleanup as (() => void) | undefined;
+      cleanup?.();
     };
   }, []);
+
   const update = React.useCallback((updater: (p: Profile) => Profile) => {
     setProfile((prev) => {
       const next = updater(prev);
@@ -168,8 +182,11 @@ export function useProfile(): [Profile, (updater: (p: Profile) => Profile) => vo
       return next;
     });
   }, []);
+
   return [profile, update];
 }
+
+// ─── Profile completeness score ──────────────────────────────────────────────
 
 export function profileCompleteness(p: Profile): number {
   let score = 0;

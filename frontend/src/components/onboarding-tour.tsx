@@ -2,6 +2,8 @@ import * as React from "react";
 import { X, ChevronLeft, ChevronRight, Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getTourKey } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
 
 type Step = {
   title: string;
@@ -74,18 +76,22 @@ export function OnboardingTour({ forceStart, onTourStarted, isWizardOpen }: Prop
     height: number;
   } | null>(null);
 
-  // Check if tour should auto-start on fresh load
+  // Check if tour should auto-start on fresh load (scoped per user)
   React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const completed = localStorage.getItem("rbp_onboarding_completed");
+    if (typeof window === "undefined") return;
+    let timer: ReturnType<typeof setTimeout>;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const userId = session?.user?.id ?? null;
+      const key = getTourKey(userId);
+      const completed = localStorage.getItem(key);
       if (!completed) {
         // Delay slightly for render stability
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
           setActive(true);
         }, 1000);
-        return () => clearTimeout(timer);
       }
-    }
+    });
+    return () => clearTimeout(timer);
   }, []);
 
   // Listen to forced start from parent (Quick Tour button)
@@ -195,13 +201,20 @@ export function OnboardingTour({ forceStart, onTourStarted, isWizardOpen }: Prop
     }
   };
 
+  const markTourDone = () => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const key = getTourKey(session?.user?.id ?? null);
+      localStorage.setItem(key, "true");
+    });
+  };
+
   const handleSkip = () => {
-    localStorage.setItem("rbp_onboarding_completed", "true");
+    markTourDone();
     setActive(false);
   };
 
   const handleComplete = () => {
-    localStorage.setItem("rbp_onboarding_completed", "true");
+    markTourDone();
     setActive(false);
   };
 

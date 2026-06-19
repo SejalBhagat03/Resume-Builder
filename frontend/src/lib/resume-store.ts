@@ -1,5 +1,12 @@
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getStorageKey,
+  storageGet,
+  storageSet,
+  storageRemove,
+  ANON_ID,
+} from "@/lib/storage";
 
 export type ProfileType = "fresh" | "experienced" | "internship" | "academic" | "custom";
 export type TemplateId = "ats-professional" | "modern" | "minimal" | "creative" | "two-column";
@@ -89,88 +96,87 @@ export type Resume = {
   };
 };
 
-const STORAGE_KEY = "rbp.resumes.v1";
+// ─── Module-level auth state ────────────────────────────────────────────────
+// Tracks the current user so read/write always use the correct namespace.
+let _activeUserId: string | null = null;
 
-const seed: Resume[] = [
-  {
-    id: "r1",
-    title: "Full Stack Developer Resume",
-    profileType: "experienced",
-    template: "ats-professional",
-    updatedAt: Date.now() - 1000 * 60 * 2,
-    downloads: 4,
-    atsScore: 95,
-    data: emptyData("Sejal Bhagat"),
-  },
-  {
-    id: "r2",
-    title: "Fresh Graduate Resume",
-    profileType: "fresh",
-    template: "ats-professional",
-    updatedAt: Date.now() - 1000 * 60 * 60 * 5,
-    downloads: 3,
-    atsScore: 88,
-    data: emptyData("Sejal Bhagat"),
-  },
-  {
-    id: "r3",
-    title: "Test Version",
-    profileType: "custom",
-    template: "modern",
-    updatedAt: Date.now() - 1000 * 60 * 60 * 24,
-    downloads: 2,
-    atsScore: 76,
-    data: emptyData("Sejal Bhagat"),
-  },
-  {
-    id: "r4",
-    title: "Default Resume",
-    profileType: "custom",
-    template: "minimal",
-    updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-    downloads: 7,
-    atsScore: 82,
-    data: emptyData("Sejal Bhagat"),
-  },
-];
+function getKey(): string {
+  return getStorageKey("resumes", _activeUserId);
+}
+
+/** Call this whenever auth state changes (login / logout). */
+export function setActiveResumeUser(userId: string | null): void {
+  _activeUserId = userId;
+}
+
+// ─── Low-level read / write (user-scoped) ───────────────────────────────────
+
+function read(): Resume[] {
+  return storageGet<Resume[]>(getKey()) ?? [];
+}
+
+function write(list: Resume[]): void {
+  storageSet(getKey(), list);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("rbp:resumes-changed"));
+  }
+}
+
+// ─── Migration ──────────────────────────────────────────────────────────────
+
+/**
+ * When a user logs in, migrate resumes from the anonymous scope (and the old
+ * shared key used before this update) into the user's personal namespace.
+ * Duplicate IDs are skipped. After migration the source keys are deleted.
+ */
+export function migrateLocalResumesToUser(userId: string): void {
+  const userKey = getStorageKey("resumes", userId);
+  const existingUser = storageGet<Resume[]>(userKey) ?? [];
+  const existingIds = new Set(existingUser.map((r) => r.id));
+
+  // Keys that may hold pre-migration or anonymous data
+  const legacyKeys = [
+    getStorageKey("resumes", null), // anonymous scope
+    "rbp.resumes.v1", // old global key (pre user-scoping)
+  ].filter((k) => k !== userKey);
+
+  let migrated = false;
+  const toAdd: Resume[] = [];
+
+  for (const srcKey of legacyKeys) {
+    const srcData = storageGet<Resume[]>(srcKey);
+    if (srcData && srcData.length > 0) {
+      const newItems = srcData.filter((r) => !existingIds.has(r.id));
+      newItems.forEach((r) => {
+        existingIds.add(r.id);
+        toAdd.push(r);
+      });
+      storageRemove(srcKey);
+      migrated = true;
+    }
+  }
+
+  if (migrated && toAdd.length > 0) {
+    storageSet(userKey, [...toAdd, ...existingUser]);
+  }
+}
+
+// ─── Public API ─────────────────────────────────────────────────────────────
 
 export function emptyData(name = "Your Name"): Resume["data"] {
   return {
     fullName: name,
     email: "you@example.com",
-    phone: "+1 555 000 0000",
-    location: "City, Country",
-    summary: "A short professional summary that highlights your strengths.",
+    phone: "",
+    location: "",
+    summary: "",
     website: "",
     linkedin: "",
     github: "",
-    education: [
-      {
-        degree: "B.Tech, Computer Science",
-        school: "Your University",
-        year: "2022 – 2026",
-        cgpa: "8.5",
-      },
-    ],
-    experience: [
-      {
-        role: "Software Engineer Intern",
-        company: "Tech Co.",
-        period: "Jun 2025 – Aug 2025",
-        bullets: ["Shipped a feature used by 10k+ users.", "Improved API latency by 30%."],
-      },
-    ],
-    projects: [
-      {
-        name: "Portfolio Website",
-        tools: "React, Tailwind",
-        bullets: ["Built and deployed a personal portfolio.", "Implemented dark mode."],
-      },
-    ],
-    skills: [
-      { category: "Languages", items: "TypeScript, Python, Go" },
-      { category: "Frameworks", items: "React, Node.js, FastAPI" },
-    ],
+    education: [],
+    experience: [],
+    projects: [],
+    skills: [],
     certifications: [],
     achievements: [],
     languages: [],
@@ -200,89 +206,6 @@ export function generateUUID(): string {
   });
 }
 
-function read(): Resume[] {
-  if (typeof window === "undefined") return seed;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-      return seed;
-    }
-    return JSON.parse(raw) as Resume[];
-  } catch {
-    return seed;
-  }
-}
-
-function write(list: Resume[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  window.dispatchEvent(new Event("rbp:resumes-changed"));
-}
-
-export function useResumes() {
-  const [list, setList] = React.useState<Resume[]>(seed);
-
-  React.useEffect(() => {
-    let active = true;
-
-    async function sync() {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user && active) {
-          const { data, error } = await supabase
-            .from("resumes")
-            .select("*")
-            .order("updated_at", { ascending: false });
-
-          if (!error && data && active) {
-            const mapped: Resume[] = data.map((r) => ({
-              id: r.id,
-              title: r.title,
-              profileType: r.profile_type as ProfileType,
-              template: r.template as TemplateId,
-              updatedAt: new Date(r.updated_at).getTime(),
-              downloads: r.downloads,
-              atsScore: r.ats_score,
-              data: r.data as Resume["data"],
-            }));
-            setList(mapped);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("Error loading from Supabase, fallback to local:", err);
-      }
-
-      if (active) {
-        setList(read());
-      }
-    }
-
-    sync();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      sync();
-    });
-
-    window.addEventListener("rbp:resumes-changed", sync);
-    window.addEventListener("storage", sync);
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-      window.removeEventListener("rbp:resumes-changed", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  return list;
-}
-
 export function getResume(id: string): Resume | undefined {
   return read().find((r) => r.id === id);
 }
@@ -306,7 +229,7 @@ export async function saveResume(r: Resume) {
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user) {
-      const dbResume = {
+      await supabase.from("resumes").upsert({
         id: activeId,
         user_id: session.user.id,
         title: r.title,
@@ -315,11 +238,10 @@ export async function saveResume(r: Resume) {
         data: r.data,
         ats_score: r.atsScore,
         downloads: r.downloads,
-      };
-      await supabase.from("resumes").upsert(dbResume);
+      });
     }
   } catch (err) {
-    console.warn("Supabase save error:", err);
+    console.warn("[resume-store] Supabase save error:", err);
   }
 }
 
@@ -331,10 +253,14 @@ export async function deleteResume(id: string) {
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user && isUUID(id)) {
-      await supabase.from("resumes").delete().eq("id", id);
+      await supabase
+        .from("resumes")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", session.user.id); // Ownership check
     }
   } catch (err) {
-    console.warn("Supabase delete error:", err);
+    console.warn("[resume-store] Supabase delete error:", err);
   }
 }
 
@@ -360,21 +286,20 @@ export function createResume(input: {
 
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session?.user) {
-      const dbResume = {
-        id: uuid,
-        user_id: session.user.id,
-        title: r.title,
-        profile_type: r.profileType,
-        template: r.template,
-        data: r.data,
-        ats_score: r.atsScore,
-        downloads: r.downloads,
-      };
       supabase
         .from("resumes")
-        .insert(dbResume)
+        .insert({
+          id: uuid,
+          user_id: session.user.id,
+          title: r.title,
+          profile_type: r.profileType,
+          template: r.template,
+          data: r.data,
+          ats_score: r.atsScore,
+          downloads: r.downloads,
+        })
         .then(({ error }) => {
-          if (error) console.warn("Supabase create error:", error.message);
+          if (error) console.warn("[resume-store] Supabase create error:", error.message);
         });
     }
   });
@@ -398,7 +323,7 @@ export async function syncLocalResumesToSupabase() {
       const newId = generateUUID();
       r = { ...r, id: newId };
 
-      const dbResume = {
+      const { error } = await supabase.from("resumes").insert({
         id: newId,
         user_id: session.user.id,
         title: r.title,
@@ -407,9 +332,8 @@ export async function syncLocalResumesToSupabase() {
         data: r.data,
         ats_score: r.atsScore,
         downloads: r.downloads,
-      };
+      });
 
-      const { error } = await supabase.from("resumes").insert(dbResume);
       if (!error) {
         const currentList = read();
         const idx = currentList.findIndex((x) => x.id === oldId);
@@ -420,9 +344,90 @@ export async function syncLocalResumesToSupabase() {
       }
     }
   } catch (err) {
-    console.warn("Sync migration error:", err);
+    console.warn("[resume-store] Sync migration error:", err);
   }
 }
+
+// ─── useResumes hook ─────────────────────────────────────────────────────────
+
+export function useResumes() {
+  const [list, setList] = React.useState<Resume[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function syncForUser(userId: string | null) {
+      // Update module-level userId so all read/write ops use the correct namespace
+      setActiveResumeUser(userId);
+
+      if (userId) {
+        // Migrate any anonymous / legacy data into this user's namespace first
+        migrateLocalResumesToUser(userId);
+
+        // Try loading from Supabase (authoritative source when online)
+        try {
+          const { data, error } = await supabase
+            .from("resumes")
+            .select("*")
+            .eq("user_id", userId) // Explicit ownership filter
+            .order("updated_at", { ascending: false });
+
+          if (!error && data && active) {
+            const mapped: Resume[] = data.map((r) => ({
+              id: r.id,
+              title: r.title,
+              profileType: r.profile_type as ProfileType,
+              template: r.template as TemplateId,
+              updatedAt: new Date(r.updated_at).getTime(),
+              downloads: r.downloads,
+              atsScore: r.ats_score,
+              data: r.data as Resume["data"],
+            }));
+            // Keep local cache in sync
+            storageSet(getStorageKey("resumes", userId), mapped);
+            if (active) setList(mapped);
+            return;
+          }
+        } catch (err) {
+          console.warn("[resume-store] Supabase load failed, using local cache:", err);
+        }
+      }
+
+      // Fall back to user-scoped (or anonymous) local cache
+      if (active) setList(read());
+    }
+
+    // Initialize with current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncForUser(session?.user?.id ?? null);
+    });
+
+    // React to login / logout
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncForUser(session?.user?.id ?? null);
+    });
+
+    // React to local writes (createResume / saveResume trigger this event)
+    const handleLocalChange = () => {
+      if (active) setList(read());
+    };
+    window.addEventListener("rbp:resumes-changed", handleLocalChange);
+    window.addEventListener("storage", handleLocalChange);
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+      window.removeEventListener("rbp:resumes-changed", handleLocalChange);
+      window.removeEventListener("storage", handleLocalChange);
+    };
+  }, []);
+
+  return list;
+}
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
 
 export function formatRelative(ts: number) {
   const diff = Date.now() - ts;
@@ -500,7 +505,9 @@ export function dataFromProfile(
     experience: opts.include.experience
       ? pickExp.map((i) => profile.experience[i]).filter(Boolean)
       : [],
-    projects: opts.include.projects ? pickProj.map((i) => profile.projects[i]).filter(Boolean) : [],
+    projects: opts.include.projects
+      ? pickProj.map((i) => profile.projects[i]).filter(Boolean)
+      : [],
     skills: opts.include.skills ? profile.skills : [],
     certifications: profile.certifications
       ? profile.certifications
@@ -514,7 +521,9 @@ export function dataFromProfile(
           .filter(Boolean)
       : [],
     languages: profile.languages
-      ? profile.languages.map((l) => (l.level ? `${l.name} (${l.level})` : l.name)).filter(Boolean)
+      ? profile.languages
+          .map((l) => (l.level ? `${l.name} (${l.level})` : l.name))
+          .filter(Boolean)
       : [],
     achievements: profile.achievements
       ? profile.achievements

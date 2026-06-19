@@ -12,6 +12,7 @@ import {
   Sparkles,
   ChevronRight,
   User,
+  Rocket,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -285,33 +286,40 @@ function DashboardPage() {
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold">My Resumes</h2>
-            <Link to="/resumes" className="text-sm font-semibold text-brand hover:underline">
-              View All
-            </Link>
+            {resumes.length > 0 && (
+              <Link to="/resumes" className="text-sm font-semibold text-brand hover:underline">
+                View All
+              </Link>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {resumes.slice(0, 4).map((r) => (
-              <ResumeCard
-                key={r.id}
-                resume={r}
-                onOpen={() => navigate({ to: "/editor/$id", params: { id: r.id } })}
-              />
-            ))}
-            <button
-              onClick={() => openWizard()}
-              className="group flex aspect-[3/4.4] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand/40 bg-brand-soft/30 p-4 text-center transition-all hover:border-brand hover:bg-brand-soft/60"
-            >
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-brand text-brand-foreground">
-                <Plus className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="text-sm font-bold text-brand">Create New Resume</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Start from scratch or choose a template
+
+          {resumes.length === 0 ? (
+            <EmptyResumesState onCreateClick={() => openWizard()} />
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {resumes.slice(0, 4).map((r) => (
+                <ResumeCard
+                  key={r.id}
+                  resume={r}
+                  onOpen={() => navigate({ to: "/editor/$id", params: { id: r.id } })}
+                />
+              ))}
+              <button
+                onClick={() => openWizard()}
+                className="group flex aspect-[3/4.4] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand/40 bg-brand-soft/30 p-4 text-center transition-all hover:border-brand hover:bg-brand-soft/60"
+              >
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-brand text-brand-foreground">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="text-sm font-bold text-brand">Create New Resume</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Start from scratch or choose a template
+                  </div>
                 </div>
-              </div>
-            </button>
-          </div>
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Subtle AI Assistant hint */}
@@ -398,6 +406,44 @@ function ResumeCard({
         </Button>
         <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg">
           <MoreVertical className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyResumesState({ onCreateClick }: { onCreateClick: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-brand/20 bg-gradient-to-b from-brand-soft/10 to-transparent px-6 py-14 text-center">
+      <div className="relative">
+        <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand-soft text-brand shadow-soft">
+          <FileText className="h-10 w-10" />
+        </div>
+        <span className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-brand text-brand-foreground shadow">
+          <Rocket className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <h3 className="mt-5 text-xl font-extrabold tracking-tight">No resumes yet</h3>
+      <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+        Create your first resume in minutes — start from scratch, choose a template, or import an
+        existing file.
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Button
+          onClick={onCreateClick}
+          className="h-11 rounded-xl bg-brand px-6 text-brand-foreground hover:bg-brand/90"
+        >
+          <Plus className="mr-1.5 h-4 w-4" /> Create New Resume
+        </Button>
+        <Button variant="outline" asChild className="h-11 rounded-xl px-6">
+          <Link to="/templates">
+            <LayoutTemplate className="mr-1.5 h-4 w-4" /> Browse Templates
+          </Link>
+        </Button>
+        <Button variant="outline" asChild className="h-11 rounded-xl px-6">
+          <Link to="/import">
+            <Upload className="mr-1.5 h-4 w-4" /> Import Resume
+          </Link>
         </Button>
       </div>
     </div>

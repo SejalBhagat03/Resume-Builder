@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { syncLocalResumesToSupabase } from "@/lib/resume-store";
+import { syncLocalResumesToSupabase, setActiveResumeUser } from "@/lib/resume-store";
+import { setActiveProfileUser } from "@/lib/profile-store";
 import { Session } from "@supabase/supabase-js";
 
 const mobileNavItems = [
@@ -114,6 +115,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   async function handleLogout() {
     try {
+      // Reset in-memory user scope BEFORE signing out so no residual data is readable
+      setActiveResumeUser(null);
+      setActiveProfileUser(null);
       localStorage.removeItem("rbp.auth.bypass");
       await supabase.auth.signOut();
       toast.success("Signed out successfully.");
@@ -128,10 +132,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const getInitials = () => {
-    if (bypass) return "SB";
     if (session?.user?.email) {
       return session.user.email.substring(0, 2).toUpperCase();
     }
+    if (bypass) return "ME";
     return "U";
   };
 
