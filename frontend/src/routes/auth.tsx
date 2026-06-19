@@ -80,27 +80,27 @@ function AuthPage() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-brand/10 blur-[120px]" />
       <div className="pointer-events-none absolute -bottom-40 -right-20 h-[400px] w-[400px] rounded-full bg-brand/8 blur-[100px]" />
 
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="relative flex min-h-screen items-center justify-center px-4 py-6 sm:py-10 md:py-12">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand text-brand-foreground shadow-soft">
-              <FileText className="h-7 w-7" />
+          <div className="mb-5 sm:mb-6 md:mb-8 flex flex-col items-center gap-2 sm:gap-3">
+            <div className="grid h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 place-items-center rounded-xl sm:rounded-2xl bg-brand text-brand-foreground shadow-soft">
+              <FileText className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" />
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">
                 Resume Builder Pro
               </h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
                 Build resumes that get you hired
               </p>
             </div>
           </div>
 
           {/* Card */}
-          <div className="rounded-3xl border border-border bg-card p-8 shadow-soft">
+          <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-5 sm:p-7 md:p-8 shadow-soft">
             {/* Tab switcher */}
-            <div className="mb-6 flex rounded-xl bg-muted p-1">
+            <div className="mb-4 sm:mb-5 md:mb-6 flex rounded-xl bg-muted p-1">
               <button
                 onClick={() => setMode("signin")}
                 className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
@@ -124,11 +124,11 @@ function AuthPage() {
             </div>
 
             {/* Heading */}
-            <div className="mb-5">
-              <h2 className="text-xl font-extrabold text-foreground">
+            <div className="mb-4 sm:mb-5">
+              <h2 className="text-lg sm:text-xl font-extrabold text-foreground">
                 {mode === "signin" ? "Welcome back 👋" : "Create your account"}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                 {mode === "signin"
                   ? "Sign in to continue building your resume."
                   : "Free forever — no credit card required."}
@@ -140,7 +140,7 @@ function AuthPage() {
               onClick={onGoogle}
               disabled={busy}
               variant="outline"
-              className="h-11 w-full rounded-xl border-border hover:bg-muted"
+              className="h-10 sm:h-11 w-full rounded-xl border-border hover:bg-muted text-xs sm:text-sm"
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -163,37 +163,37 @@ function AuthPage() {
               Continue with Google
             </Button>
 
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="my-3.5 sm:my-4 md:my-5 flex items-center gap-3 text-xs text-muted-foreground">
               <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
             </div>
 
             {/* Email form */}
-            <form onSubmit={onEmail} className="space-y-3">
+            <form onSubmit={onEmail} className="space-y-2.5 sm:space-y-3">
               {mode === "signup" && (
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold">Full name</Label>
+                <div className="space-y-1 sm:space-y-1.5">
+                  <Label className="text-xs sm:text-sm font-semibold">Full name</Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Jane Doe"
                     required
-                    className="h-11 rounded-xl"
+                    className="h-10 sm:h-11 rounded-xl text-xs sm:text-sm"
                   />
                 </div>
               )}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold">Email</Label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <Label className="text-xs sm:text-sm font-semibold">Email</Label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="h-11 rounded-xl"
+                  className="h-10 sm:h-11 rounded-xl text-xs sm:text-sm"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold">Password</Label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <Label className="text-xs sm:text-sm font-semibold">Password</Label>
                 <div className="relative">
                   <Input
                     type={showPass ? "text" : "password"}
@@ -202,7 +202,7 @@ function AuthPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min. 6 characters"
                     required
-                    className="h-11 rounded-xl pr-11"
+                    className="h-10 sm:h-11 rounded-xl pr-11 text-xs sm:text-sm"
                   />
                   <button
                     type="button"
@@ -218,15 +218,15 @@ function AuthPage() {
               <Button
                 type="submit"
                 disabled={busy}
-                className="mt-1 h-11 w-full rounded-xl bg-brand text-brand-foreground hover:bg-brand/90"
+                className="mt-1 h-10 sm:h-11 w-full rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 text-xs sm:text-sm font-bold"
               >
                 {busy ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-foreground border-t-transparent" />
                     Please wait…
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center gap-2">
                     {mode === "signin" ? "Sign in" : "Create account"}
                     <ArrowRight className="h-4 w-4" />
                   </span>
@@ -238,7 +238,7 @@ function AuthPage() {
               (window.location.hostname === "localhost" ||
                 window.location.hostname === "127.0.0.1") && (
                 <div className="mt-4">
-                  <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground uppercase tracking-wider">
+                  <div className="my-3 flex items-center gap-3 text-[10px] text-muted-foreground uppercase tracking-wider">
                     <div className="h-px flex-1 bg-border" />
                     <span>Local Development</span>
                     <div className="h-px flex-1 bg-border" />
@@ -251,7 +251,7 @@ function AuthPage() {
                       toast.success("Developer mode sign-in active.");
                       navigate({ to: "/" });
                     }}
-                    className="h-11 w-full rounded-xl border-dashed border-brand/40 text-brand hover:bg-brand-soft/20 hover:text-brand hover:border-brand/70"
+                    className="h-10 sm:h-11 w-full rounded-xl border-dashed border-brand/40 text-brand hover:bg-brand-soft/20 hover:text-brand hover:border-brand/70 text-xs sm:text-sm"
                   >
                     Bypass Authentication (Dev Mode)
                   </Button>
@@ -260,7 +260,7 @@ function AuthPage() {
           </div>
 
           {/* Feature highlights */}
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
+          <div className="mt-4 sm:mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
             {["ATS-Optimised", "PDF Export", "AI Suggestions"].map((f) => (
               <span key={f} className="flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-brand" /> {f}
