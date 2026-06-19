@@ -600,8 +600,8 @@ export function CreateResumeWizard({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl gap-0 overflow-hidden rounded-3xl border-border p-0">
-          <DialogHeader className="space-y-1 px-7 pt-7">
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-border p-0">
+          <DialogHeader className="space-y-1 px-4 sm:px-7 pt-4 sm:pt-7">
             <div className="flex items-center gap-3">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-soft text-brand">
                 <FileText className="h-5 w-5" />
@@ -617,7 +617,7 @@ export function CreateResumeWizard({
 
           <Stepper step={step} />
 
-          <div className="max-h-[60vh] overflow-y-auto px-7 pb-6 bg-background/50">
+          <div className="max-h-[55vh] sm:max-h-[60vh] overflow-y-auto px-4 sm:px-7 pb-4 sm:pb-6 bg-background/50">
             {step === 1 && (
               <section className="animate-fade-in space-y-4">
                 <StepHeader
@@ -984,7 +984,7 @@ export function CreateResumeWizard({
                           {TEMPLATES.length} templates
                         </span>
                       </div>
-                      <div className="grid gap-3 grid-cols-2 max-h-[400px] overflow-y-auto pr-1 pb-1">
+                      <div className="grid gap-3 grid-cols-2 max-h-[220px] sm:max-h-[400px] overflow-y-auto pr-1 pb-6">
                         {TEMPLATES.map((t) => {
                           const isSelected = template === t.id;
                           return (
@@ -1184,8 +1184,8 @@ export function CreateResumeWizard({
             )}
           </div>
 
-          <footer className="flex items-center justify-between border-t border-border bg-card px-6 py-4 shrink-0">
-            <div>
+          <footer className="flex items-center justify-between border-t border-border bg-card px-4 sm:px-6 py-3 sm:py-4 shrink-0">
+            <div className="hidden sm:block">
               {step === 3 && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
                   <Sparkles className="h-4 w-4 text-brand" />
@@ -1242,8 +1242,9 @@ export function CreateResumeWizard({
 
 function Stepper({ step }: { step: number }) {
   const labels = ["Profile Type", "Source / Import", "Theme & Finish"];
+  const mobileLabels = ["Profile", "Source", "Finish"];
   return (
-    <div className="px-7 py-6 shrink-0">
+    <div className="px-4 sm:px-7 py-3.5 sm:py-6 shrink-0">
       <div className="flex items-center">
         {labels.map((label, i) => {
           const idx = i + 1;
@@ -1251,7 +1252,7 @@ function Stepper({ step }: { step: number }) {
           const active = idx === step;
           return (
             <React.Fragment key={label}>
-              <div className="flex flex-col items-center gap-1.5">
+              <div className="flex flex-col items-center gap-1.5 min-w-[70px] sm:min-w-0">
                 <div
                   className={cn(
                     "grid h-9 w-9 place-items-center rounded-full text-sm font-semibold transition-colors",
@@ -1264,17 +1265,18 @@ function Stepper({ step }: { step: number }) {
                 </div>
                 <span
                   className={cn(
-                    "text-xs font-medium",
+                    "text-[10px] sm:text-xs font-medium text-center whitespace-normal leading-tight max-w-[80px] sm:max-w-none mt-0.5",
                     active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{mobileLabels[i]}</span>
                 </span>
               </div>
               {idx < labels.length && (
                 <div
                   className={cn(
-                    "mx-2 h-0.5 flex-1 rounded-full",
+                    "mx-1 sm:mx-2 h-0.5 flex-1 rounded-full",
                     idx < step ? "bg-brand" : "bg-border",
                   )}
                 />
@@ -1324,7 +1326,7 @@ function SelectCard({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group relative flex flex-col items-center gap-3 rounded-2xl border-2 bg-card p-4 text-center transition-all cursor-pointer min-h-[155px] justify-center",
+        "group relative flex flex-row sm:flex-col items-center gap-3 rounded-2xl border-2 bg-card p-3 sm:p-4 text-left sm:text-center transition-all cursor-pointer min-h-0 sm:min-h-[155px] justify-start sm:justify-center w-full",
         active
           ? "border-brand bg-brand-soft/40 shadow-soft"
           : "border-border hover:border-brand/40 hover:bg-muted/40",
@@ -1332,21 +1334,21 @@ function SelectCard({
       )}
     >
       {active && (
-        <span className="absolute right-2.5 top-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-foreground">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 sm:top-2.5 sm:translate-y-0 sm:right-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-foreground shrink-0 shadow-sm">
           <Check className="h-3.5 w-3.5" />
         </span>
       )}
       <span
         className={cn(
-          "grid h-12 w-12 place-items-center rounded-full bg-brand-soft text-brand transition-colors",
+          "grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-brand transition-colors",
           disabled && "bg-muted text-muted-foreground",
         )}
       >
-        <Icon className="h-5.5 w-5.5" />
+        <Icon className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
       </span>
-      <div>
-        <div className="text-xs font-bold leading-tight truncate max-w-[130px]">{title}</div>
-        <div className="mt-1.5 text-[10px] text-muted-foreground leading-normal max-h-[42px] overflow-hidden">
+      <div className="flex-1 min-w-0 pr-6 sm:pr-0">
+        <div className="text-xs font-bold leading-tight truncate sm:max-w-[130px]">{title}</div>
+        <div className="mt-0.5 sm:mt-1.5 text-[10px] text-muted-foreground leading-normal max-h-[32px] sm:max-h-[42px] overflow-hidden">
           {sub}
         </div>
       </div>

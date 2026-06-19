@@ -1,6 +1,7 @@
 import * as React from "react";
 import { X, ChevronLeft, ChevronRight, Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Step = {
   title: string;
@@ -59,9 +60,11 @@ const TOUR_STEPS: Step[] = [
 type Props = {
   forceStart?: boolean;
   onTourStarted?: () => void;
+  isWizardOpen?: boolean;
 };
 
-export function OnboardingTour({ forceStart, onTourStarted }: Props) {
+export function OnboardingTour({ forceStart, onTourStarted, isWizardOpen }: Props) {
+  const isMobile = useIsMobile();
   const [active, setActive] = React.useState(false);
   const [stepIndex, setStepIndex] = React.useState(0);
   const [spotlightRect, setSpotlightRect] = React.useState<{
@@ -157,18 +160,22 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
 
     const timer = setTimeout(updatePosition, 300);
 
+    // Re-measure periodically to adapt to layout reflows, loading, and hydration delays
+    const interval = setInterval(updatePosition, 500);
+
     // Re-measure on resize or scroll
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition);
 
     return () => {
       clearTimeout(timer);
+      clearInterval(interval);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition);
     };
   }, [active, stepIndex]);
 
-  if (!active) return null;
+  if (!active || isWizardOpen) return null;
 
   const currentStep = TOUR_STEPS[stepIndex];
   const isFirst = stepIndex === 0;
@@ -206,66 +213,86 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
     transform: "translate(-50%, -50%)",
     width: "320px",
     maxWidth: "calc(100vw - 32px)",
-    zIndex: 50,
+    zIndex: 55,
   };
   let arrowClass = "";
 
   if (spotlightRect) {
     const viewportWidth = window.innerWidth;
     const cardWidth = 320;
-    const cardHeight = 220; // Estimated max height
-
-    // Determine vertical placement
-    const fitsBelow =
-      spotlightRect.top + spotlightRect.height + cardHeight + 20 <
-      window.innerHeight + window.scrollY;
+    const cardHeight = 150; // Use a smaller estimated height for dynamic placement calculations
 
     // Determine horizontal position (center aligned to target, bounded by viewport)
     let leftPos = spotlightRect.left + (spotlightRect.width - cardWidth) / 2;
     leftPos = Math.max(16, Math.min(viewportWidth - cardWidth - 16, leftPos));
 
-    if (viewportWidth < 640) {
-      // Mobile specific placement: fixed bottom-sheet layout
-      cardStyle = {
-        position: "fixed",
-        bottom: "80px",
-        left: "16px",
-        right: "16px",
-        width: "auto",
-        maxWidth: "calc(100vw - 32px)",
-        margin: "0 auto",
-        zIndex: 50,
-      };
-      arrowClass = ""; // No arrows needed for fixed bottom card
-    } else if (spotlightRect.left < 100) {
-      // Sidebar target - position on the right
-      cardStyle = {
-        position: "absolute",
-        top: spotlightRect.top + (spotlightRect.height - 180) / 2,
-        left: spotlightRect.left + spotlightRect.width + 16,
-        width: cardWidth,
-        zIndex: 50,
-      };
-      arrowClass = "tour-arrow-left";
-    } else if (fitsBelow) {
-      cardStyle = {
-        position: "absolute",
-        top: spotlightRect.top + spotlightRect.height + 16,
-        left: leftPos,
-        width: cardWidth,
-        zIndex: 50,
-      };
-      arrowClass = "tour-arrow-top";
+    if (isMobile) {
+      // Determine vertical placement dynamically to avoid overlapping the target
+      const spaceBelow =
+        window.innerHeight + window.scrollY - (spotlightRect.top + spotlightRect.height);
+      const spaceAbove = spotlightRect.top - window.scrollY;
+      const positionBelow = spaceBelow >= spaceAbove || spaceBelow > 180;
+
+      if (positionBelow) {
+        cardStyle = {
+          position: "fixed",
+          top: spotlightRect.top - window.scrollY + spotlightRect.height + 12,
+          left: "16px",
+          right: "16px",
+          width: "auto",
+          maxWidth: "calc(100vw - 32px)",
+          zIndex: 55,
+        };
+        arrowClass = "tour-arrow-top";
+      } else {
+        cardStyle = {
+          position: "fixed",
+          top: spotlightRect.top - window.scrollY - 12,
+          left: "16px",
+          right: "16px",
+          width: "auto",
+          maxWidth: "calc(100vw - 32px)",
+          transform: "translateY(-100%)",
+          zIndex: 55,
+        };
+        arrowClass = "tour-arrow-bottom";
+      }
     } else {
-      // Position above
-      cardStyle = {
-        position: "absolute",
-        top: spotlightRect.top - cardHeight - 16,
-        left: leftPos,
-        width: cardWidth,
-        zIndex: 50,
-      };
-      arrowClass = "tour-arrow-bottom";
+      // Determine vertical placement for desktop
+      const fitsBelow =
+        spotlightRect.top + spotlightRect.height + cardHeight + 20 <
+        window.innerHeight + window.scrollY;
+
+      if (spotlightRect.left < 100) {
+        // Sidebar target - position on the right
+        cardStyle = {
+          position: "fixed",
+          top: spotlightRect.top - window.scrollY + (spotlightRect.height - 180) / 2,
+          left: spotlightRect.left - window.scrollX + spotlightRect.width + 16,
+          width: cardWidth,
+          zIndex: 55,
+        };
+        arrowClass = "tour-arrow-left";
+      } else if (fitsBelow) {
+        cardStyle = {
+          position: "fixed",
+          top: spotlightRect.top - window.scrollY + spotlightRect.height + 16,
+          left: leftPos - window.scrollX,
+          width: cardWidth,
+          zIndex: 55,
+        };
+        arrowClass = "tour-arrow-top";
+      } else {
+        // Position above
+        cardStyle = {
+          position: "fixed",
+          top: spotlightRect.top - window.scrollY - cardHeight - 16,
+          left: leftPos - window.scrollX,
+          width: cardWidth,
+          zIndex: 55,
+        };
+        arrowClass = "tour-arrow-bottom";
+      }
     }
   }
 
@@ -273,15 +300,22 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
   const visualSteps = TOUR_STEPS.filter((s) => s.targetId !== null);
   const visualCurrentIndex = stepIndex - 1;
 
+  console.log("DEBUG TOUR VALUES:", {
+    stepIndex,
+    targetId: currentStep.targetId,
+    spotlightRect: spotlightRect ? JSON.stringify(spotlightRect) : "null",
+    cardStyle: JSON.stringify(cardStyle),
+  });
+
   return (
     <>
       {/* Background Blocker - stops all click events on backend layout */}
-      <div className="fixed inset-0 z-30 bg-transparent pointer-events-auto" />
+      <div className="fixed inset-0 z-45 bg-transparent pointer-events-auto" />
 
       {/* Spotlight Overlay */}
       {spotlightRect ? (
         <div
-          className="fixed rounded-xl pointer-events-none transition-all duration-300 z-40 border-2 border-brand/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
+          className="fixed rounded-xl pointer-events-none transition-all duration-300 z-50 border-2 border-brand/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
           style={{
             top: spotlightRect.top - window.scrollY - 4,
             left: spotlightRect.left - window.scrollX - 4,
@@ -291,26 +325,26 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
         />
       ) : (
         // Full dim screen backdrop for welcome/celebration modals
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 pointer-events-auto" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 pointer-events-auto" />
       )}
 
       {/* Tour Dialog Card */}
       <div
-        className="bg-card text-card-foreground rounded-2xl border border-border p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="bg-card text-card-foreground rounded-xl sm:rounded-2xl border border-border p-3 sm:p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         style={cardStyle}
       >
         {/* Tooltip Arrow */}
         {arrowClass && <div className={arrowClass} />}
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5">
             {!spotlightRect && (
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-soft text-brand">
-                <Sparkles className="h-4 w-4" />
+              <span className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-lg bg-brand-soft text-brand">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </span>
             )}
-            <h3 className="font-extrabold text-sm text-foreground tracking-tight">
+            <h3 className="font-extrabold text-xs sm:text-sm text-foreground tracking-tight">
               {currentStep.title}
             </h3>
           </div>
@@ -319,29 +353,31 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
             className="text-muted-foreground hover:text-foreground rounded-lg p-0.5 transition-colors"
             title="Skip Tour"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
 
         {/* Content */}
-        <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-1 sm:mt-2.5 text-[10.5px] sm:text-xs leading-normal sm:leading-relaxed text-muted-foreground">
           {currentStep.description}
         </p>
 
         {/* Footer Controls */}
-        <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3">
+        <div className="mt-3.5 sm:mt-5 flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3">
           {/* Progress Indicators */}
           {spotlightRect && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+            <div className="flex flex-col gap-0.5 sm:gap-1">
+              <span className="text-[9px] sm:text-[10px] font-medium text-muted-foreground">
                 Step {visualCurrentIndex + 1} of {visualSteps.length}
               </span>
               <div className="flex items-center gap-1">
                 {visualSteps.map((_, idx) => (
                   <span
                     key={idx}
-                    className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                      idx === visualCurrentIndex ? "bg-brand w-3" : "bg-muted-foreground/35"
+                    className={`h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full transition-colors ${
+                      idx === visualCurrentIndex
+                        ? "bg-brand w-2.5 sm:w-3"
+                        : "bg-muted-foreground/35"
                     }`}
                   />
                 ))}
@@ -353,16 +389,16 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
           {!spotlightRect && <div className="flex-1" />}
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 ml-auto">
+          <div className="flex items-center gap-1 ml-auto">
             {spotlightRect && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
                 disabled={isFirst}
-                className="h-8 rounded-lg text-xs font-semibold text-muted-foreground"
+                className="h-6 sm:h-8 rounded-md sm:rounded-lg text-[9px] sm:text-xs font-semibold text-muted-foreground px-2 sm:px-3"
               >
-                <ChevronLeft className="mr-0.5 h-3.5 w-3.5" /> Back
+                <ChevronLeft className="mr-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5" /> Back
               </Button>
             )}
 
@@ -371,7 +407,7 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
                 variant="ghost"
                 size="sm"
                 onClick={handleSkip}
-                className="h-8 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
+                className="h-6 sm:h-8 rounded-md sm:rounded-lg text-[9px] sm:text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive-soft px-2 sm:px-3"
               >
                 Skip
               </Button>
@@ -380,7 +416,7 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
             <Button
               size="sm"
               onClick={handleNext}
-              className="h-8 rounded-lg bg-brand text-brand-foreground hover:bg-brand/90 text-xs font-bold px-3.5"
+              className="h-6 sm:h-8 rounded-md sm:rounded-lg bg-brand text-brand-foreground hover:bg-brand/90 text-[9px] sm:text-xs font-bold px-2.5 sm:px-3.5"
             >
               {isFirst ? (
                 "Start Tour"
@@ -388,7 +424,7 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
                 "Finish"
               ) : (
                 <>
-                  Next <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
+                  Next <ChevronRight className="ml-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </>
               )}
             </Button>

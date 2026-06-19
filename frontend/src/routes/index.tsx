@@ -348,7 +348,11 @@ function DashboardPage() {
         defaultSource={wizardConfig.defaultSource}
         defaultStep={wizardConfig.defaultStep}
       />
-      <OnboardingTour forceStart={forceStartTour} onTourStarted={() => setForceStartTour(false)} />
+      <OnboardingTour
+        forceStart={forceStartTour}
+        onTourStarted={() => setForceStartTour(false)}
+        isWizardOpen={wizardOpen}
+      />
     </AppShell>
   );
 }
