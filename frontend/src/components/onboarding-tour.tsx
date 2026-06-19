@@ -111,7 +111,9 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
       return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
     };
 
-    const idsToCheck = [currentStep.targetId, ...(currentStep.fallbacks || [])].filter(Boolean) as string[];
+    const idsToCheck = [currentStep.targetId, ...(currentStep.fallbacks || [])].filter(
+      Boolean,
+    ) as string[];
     let element: HTMLElement | null = null;
 
     for (const id of idsToCheck) {

@@ -51,7 +51,10 @@ function AtsPage() {
           </div>
           <ul className="divide-y divide-border">
             {resumes.map((r) => (
-              <li key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
+              <li
+                key={r.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold text-sm sm:text-base">{r.title}</div>
                   <div className="text-xs text-muted-foreground">
