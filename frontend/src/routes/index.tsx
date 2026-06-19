@@ -183,22 +183,22 @@ function DashboardPage() {
           {stats.map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-border bg-card p-4 shadow-soft md:p-5"
+              className="rounded-2xl border border-border bg-card p-4 shadow-soft md:p-5 flex flex-col justify-between"
             >
-              <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">
-                  <s.icon className="h-5 w-5" />
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="grid h-8 w-8 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-brand-soft text-brand">
+                  <s.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-medium text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] sm:text-xs font-medium text-muted-foreground leading-tight sm:leading-normal">
                     {s.label}
                   </div>
-                  <div className="text-2xl font-extrabold leading-tight text-foreground">
+                  <div className="text-lg sm:text-2xl font-extrabold leading-tight text-foreground">
                     {s.value}
                   </div>
                 </div>
               </div>
-              <div className="mt-2 text-xs text-muted-foreground">{s.sub}</div>
+              <div className="mt-2 hidden sm:block text-xs text-muted-foreground">{s.sub}</div>
             </div>
           ))}
         </section>

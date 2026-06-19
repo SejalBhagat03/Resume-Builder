@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { title: "Home", url: "/", icon: Home },
-  { title: "Templates", url: "/templates", icon: LayoutTemplate },
+  { title: "Templates", url: "/templates", icon: LayoutTemplate, id: "tour-mobile-templates" },
   { title: "My Resumes", url: "/resumes", icon: FileText },
-  { title: "Profile", url: "/profile", icon: User },
+  { title: "Profile", url: "/profile", icon: User, id: "tour-mobile-profile" },
 ];
 
 export function MobileBottomNav() {
@@ -23,6 +23,7 @@ export function MobileBottomNav() {
             <li key={item.url}>
               <Link
                 to={item.url}
+                id={item.id}
                 className={cn(
                   "flex flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors",
                   active ? "text-brand" : "text-muted-foreground",

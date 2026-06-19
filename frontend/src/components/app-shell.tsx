@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Search, Menu, X, LogIn, LogOut, HelpCircle } from "lucide-react";
+import { Search, Menu, X, LogIn, LogOut, HelpCircle } from "lucide-react";
 import { LayoutDashboard, FileText, LayoutTemplate, BarChart3, Upload } from "lucide-react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -174,12 +174,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <HelpCircle className="h-4 w-4 text-brand" />
             <span className="hidden sm:inline">Quick Tour</span>
           </Button>
-
-          <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand" />
-          </Button>
-
           {isLoggedIn ? (
             <>
               <Button

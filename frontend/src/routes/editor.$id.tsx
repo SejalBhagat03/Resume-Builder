@@ -442,7 +442,7 @@ function EditorPage() {
         </div>
 
         {/* Steps strip */}
-        <ol className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <ol className="mt-6 grid grid-cols-6 gap-1.5 sm:gap-2">
           {STEPS.map((s, i) => {
             const done = i < step;
             const active = i === step;
@@ -451,7 +451,7 @@ function EditorPage() {
                 <button
                   onClick={() => setStep(i)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                    "flex w-full items-center justify-center sm:justify-start gap-2 rounded-xl border p-2 sm:px-3 sm:py-2.5 text-left transition-colors",
                     active && "border-brand bg-brand-soft text-brand",
                     done && !active && "border-brand/40 bg-card text-brand",
                     !active &&
@@ -471,7 +471,7 @@ function EditorPage() {
                   >
                     {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                   </span>
-                  <span className="truncate text-sm font-semibold">{s.label}</span>
+                  <span className="hidden sm:inline truncate text-sm font-semibold">{s.label}</span>
                 </button>
               </li>
             );

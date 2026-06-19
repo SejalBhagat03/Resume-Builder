@@ -6,7 +6,7 @@ type Step = {
   title: string;
   description: string;
   targetId: string | null; // null means centered dialog
-  fallbackId?: string; // fallback if targetId is missing
+  fallbacks?: string[]; // fallback IDs in order if targetId is missing or hidden
 };
 
 const TOUR_STEPS: Step[] = [
@@ -27,6 +27,7 @@ const TOUR_STEPS: Step[] = [
     description:
       "Browse dozens of professional, recruiter-approved, and ATS-friendly templates. Click here to check the layouts library.",
     targetId: "tour-sidebar-templates",
+    fallbacks: ["tour-mobile-templates"],
   },
   {
     title: "Real-time ATS Analytics",
@@ -45,7 +46,7 @@ const TOUR_STEPS: Step[] = [
     description:
       "Fill out your profile once. The builder will automatically auto-populate details for new resumes and generate tailored suggestions.",
     targetId: "tour-profile",
-    fallbackId: "tour-sidebar-profile",
+    fallbacks: ["tour-sidebar-profile", "tour-mobile-profile"],
   },
   {
     title: "You're All Set! 🎉",
@@ -106,9 +107,19 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
       return;
     }
 
-    let element = document.getElementById(currentStep.targetId);
-    if (!element && currentStep.fallbackId) {
-      element = document.getElementById(currentStep.fallbackId);
+    const isElementVisible = (el: HTMLElement) => {
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
+    };
+
+    const idsToCheck = [currentStep.targetId, ...(currentStep.fallbacks || [])].filter(Boolean) as string[];
+    let element: HTMLElement | null = null;
+
+    for (const id of idsToCheck) {
+      const el = document.getElementById(id);
+      if (el && isElementVisible(el)) {
+        element = el;
+        break;
+      }
     }
 
     if (!element) {
@@ -191,6 +202,8 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
+    width: "320px",
+    maxWidth: "calc(100vw - 32px)",
     zIndex: 50,
   };
   let arrowClass = "";
@@ -209,7 +222,20 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
     let leftPos = spotlightRect.left + (spotlightRect.width - cardWidth) / 2;
     leftPos = Math.max(16, Math.min(viewportWidth - cardWidth - 16, leftPos));
 
-    if (spotlightRect.left < 100) {
+    if (viewportWidth < 640) {
+      // Mobile specific placement: fixed bottom-sheet layout
+      cardStyle = {
+        position: "fixed",
+        bottom: "80px",
+        left: "16px",
+        right: "16px",
+        width: "auto",
+        maxWidth: "calc(100vw - 32px)",
+        margin: "0 auto",
+        zIndex: 50,
+      };
+      arrowClass = ""; // No arrows needed for fixed bottom card
+    } else if (spotlightRect.left < 100) {
       // Sidebar target - position on the right
       cardStyle = {
         position: "absolute",
@@ -263,7 +289,7 @@ export function OnboardingTour({ forceStart, onTourStarted }: Props) {
         />
       ) : (
         // Full dim screen backdrop for welcome/celebration modals
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 pointer-events-none" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 pointer-events-auto" />
       )}
 
       {/* Tour Dialog Card */}

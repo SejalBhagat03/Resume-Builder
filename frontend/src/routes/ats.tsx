@@ -51,15 +51,15 @@ function AtsPage() {
           </div>
           <ul className="divide-y divide-border">
             {resumes.map((r) => (
-              <li key={r.id} className="flex items-center gap-4 p-4">
+              <li key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{r.title}</div>
+                  <div className="truncate font-semibold text-sm sm:text-base">{r.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {TEMPLATES.find((t) => t.id === r.template)?.name}
                   </div>
                 </div>
-                <div className="w-48">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="flex-1 sm:w-48 h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -73,8 +73,8 @@ function AtsPage() {
                       }}
                     />
                   </div>
+                  <div className="w-12 shrink-0 text-right text-sm font-bold">{r.atsScore}%</div>
                 </div>
-                <div className="w-12 text-right text-sm font-bold">{r.atsScore}%</div>
               </li>
             ))}
           </ul>
