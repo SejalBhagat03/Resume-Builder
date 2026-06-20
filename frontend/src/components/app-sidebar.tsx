@@ -9,7 +9,6 @@ const main = [
   { title: "My Resumes", url: "/resumes", icon: FileText },
   { title: "Templates", url: "/templates", icon: LayoutTemplate, id: "tour-sidebar-templates" },
   { title: "ATS", url: "/ats", icon: BarChart3 },
-  { title: "Import", url: "/import", icon: Upload },
 ];
 
 type NavItem = {

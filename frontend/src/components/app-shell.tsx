@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Search, Menu, X, LogIn, LogOut, HelpCircle } from "lucide-react";
-import { LayoutDashboard, FileText, LayoutTemplate, BarChart3, Upload } from "lucide-react";
+import { LayoutDashboard, User, FileText, LayoutTemplate, BarChart3, Upload } from "lucide-react";
 import { Link, useRouterState, useNavigate, useMatchRoute } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -12,13 +12,20 @@ import { toast } from "sonner";
 import { syncLocalResumesToSupabase, setActiveResumeUser } from "@/lib/resume-store";
 import { setActiveProfileUser } from "@/lib/profile-store";
 import { Session } from "@supabase/supabase-js";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const mobileNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "My Resumes", url: "/resumes", icon: FileText },
   { title: "Templates", url: "/templates", icon: LayoutTemplate },
   { title: "ATS Analysis", url: "/ats", icon: BarChart3 },
-  { title: "Import Resume", url: "/import", icon: Upload },
 ];
 
 function MobileDrawerNav({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -152,18 +159,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-6">
-          {/* Mobile menu toggle — hidden on editor page (back arrow handles navigation there) */}
-          {!isEditorPage && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full md:hidden"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-
           <div className="relative ml-auto hidden w-full max-w-sm md:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -182,23 +177,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <HelpCircle className="h-4 w-4 text-brand" />
             <span className="hidden sm:inline">Quick Tour</span>
           </Button>
+
           {isLoggedIn ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="h-10 gap-2 rounded-xl border-border bg-card px-4 text-sm font-medium hover:bg-destructive hover:text-destructive-foreground transition-all duration-200"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 focus:outline-none select-none">
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand hover:ring-2 hover:ring-brand/40 transition-all cursor-pointer">
+                    {getInitials()}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 mt-1 rounded-xl p-1.5 border border-border bg-popover shadow-md"
               >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Log Out</span>
-              </Button>
-              <button className="flex items-center gap-1.5">
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand">
-                  {getInitials()}
-                </span>
-              </button>
-            </>
+                <DropdownMenuLabel className="px-2.5 py-2">
+                  <div className="flex flex-col space-y-0.5">
+                    <span className="text-xs font-extrabold text-foreground">Account</span>
+                    <span className="text-[10px] text-muted-foreground truncate font-medium">
+                      {session?.user?.email || "Dev Bypass Mode"}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="-mx-1 my-1.5 bg-border/60" />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold rounded-lg text-destructive hover:bg-destructive-soft hover:text-destructive cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button
               variant="default"

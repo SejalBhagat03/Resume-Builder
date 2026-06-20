@@ -8,7 +8,6 @@ const items = [
   { title: "Resumes", url: "/resumes", icon: FileText },
   { title: "Templates", url: "/templates", icon: LayoutTemplate, id: "tour-mobile-templates" },
   { title: "ATS", url: "/ats", icon: BarChart3 },
-  { title: "Import", url: "/import", icon: Upload },
 ];
 
 export function MobileBottomNav() {
@@ -18,7 +17,7 @@ export function MobileBottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid grid-cols-6">
+      <ul className="grid grid-cols-5">
         {items.map((item) => {
           const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
           return (
