@@ -42,7 +42,7 @@ export function ProfileStep({ data, update }: ProfileStepProps) {
 
   return (
     <Section title="Profile" sub="Basic contact information that appears at the top.">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 mb-4">
         <Field label="Full name" value={data.fullName} onChange={(v) => update({ fullName: v })} />
         <Field label="Email" value={data.email} onChange={(v) => update({ email: v })} />
         <Field label="Phone" value={data.phone} onChange={(v) => update({ phone: v })} />
@@ -51,16 +51,45 @@ export function ProfileStep({ data, update }: ProfileStepProps) {
           label="Website / Portfolio"
           value={data.website ?? ""}
           onChange={(v) => update({ website: v })}
+          placeholder="e.g. sejalbhagat.me"
+          onBlur={() => {
+            const val = (data.website ?? "").trim();
+            if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+              update({ website: `https://${val}` });
+            }
+          }}
         />
         <Field
           label="LinkedIn URL"
           value={data.linkedin ?? ""}
           onChange={(v) => update({ linkedin: v })}
+          placeholder="Username or full URL"
+          onBlur={() => {
+            const val = (data.linkedin ?? "").trim();
+            if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+              if (val.includes("linkedin.com")) {
+                update({ linkedin: `https://${val}` });
+              } else {
+                update({ linkedin: `https://linkedin.com/in/${val}` });
+              }
+            }
+          }}
         />
         <Field
           label="GitHub URL"
           value={data.github ?? ""}
           onChange={(v) => update({ github: v })}
+          placeholder="Username or full URL"
+          onBlur={() => {
+            const val = (data.github ?? "").trim();
+            if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+              if (val.includes("github.com")) {
+                update({ github: `https://${val}` });
+              } else {
+                update({ github: `https://github.com/${val}` });
+              }
+            }
+          }}
         />
       </div>
       <div>

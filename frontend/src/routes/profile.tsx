@@ -238,19 +238,45 @@ function ProfilePage() {
               icon={Github}
               value={profile.github}
               onChange={(v) => set("github", v)}
-              placeholder="GitHub URL or handle"
+              placeholder="GitHub handle or full URL"
+              onBlur={() => {
+                const val = profile.github.trim();
+                if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+                  if (val.includes("github.com")) {
+                    set("github", `https://${val}`);
+                  } else {
+                    set("github", `https://github.com/${val}`);
+                  }
+                }
+              }}
             />
             <IconField
               icon={Linkedin}
               value={profile.linkedin}
               onChange={(v) => set("linkedin", v)}
-              placeholder="LinkedIn URL"
+              placeholder="LinkedIn handle or full URL"
+              onBlur={() => {
+                const val = profile.linkedin.trim();
+                if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+                  if (val.includes("linkedin.com")) {
+                    set("linkedin", `https://${val}`);
+                  } else {
+                    set("linkedin", `https://linkedin.com/in/${val}`);
+                  }
+                }
+              }}
             />
             <IconField
               icon={Globe}
               value={profile.portfolio}
               onChange={(v) => set("portfolio", v)}
-              placeholder="Portfolio URL"
+              placeholder="Portfolio/Website URL"
+              onBlur={() => {
+                const val = profile.portfolio.trim();
+                if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+                  set("portfolio", `https://${val}`);
+                }
+              }}
             />
           </div>
         </SectionCard>
@@ -671,11 +697,13 @@ function IconField({
   value,
   onChange,
   placeholder,
+  onBlur,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  onBlur?: () => void;
 }) {
   return (
     <div className="relative">
@@ -684,6 +712,7 @@ function IconField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        onBlur={onBlur}
         className="h-11 rounded-xl pl-9"
       />
     </div>
