@@ -16,6 +16,12 @@ import {
   ArrowDown,
   User,
   Sparkles,
+  Trash2,
+  Plus,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import {
   Dialog,
@@ -28,8 +34,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useProfile } from "@/lib/profile-store";
+import { useProfile, profileCompleteness, type Profile } from "@/lib/profile-store";
 import {
   createResume,
   saveResume,
@@ -247,6 +254,12 @@ async function parsePdfLayout(file: File) {
 
 const sourceOptions = [
   {
+    id: "import",
+    title: "Import Resume",
+    sub: "Upload a PDF, DOCX or TXT to auto-fill fields.",
+    icon: FileUp,
+  },
+  {
     id: "profile",
     title: "Pull from Profile",
     sub: "Auto-fill using your master career profile.",
@@ -257,12 +270,6 @@ const sourceOptions = [
     title: "Start Empty",
     sub: "Begin with a clean slate and add as you go.",
     icon: FileText,
-  },
-  {
-    id: "import",
-    title: "Import Existing Resume",
-    sub: "Upload a PDF, DOCX or TXT to auto-fill fields.",
-    icon: FileUp,
   },
   {
     id: "github",
@@ -337,11 +344,28 @@ export function CreateResumeWizard({
   defaultSource?: string;
   defaultStep?: number;
 }) {
-  const [profileData] = useProfile();
+  const [profileData, updateProfile] = useProfile();
   const [step, setStep] = React.useState(1);
   const [profile, setProfile] = React.useState<ProfileType>("fresh");
   const [source, setSource] = React.useState("blank");
   const [fullscreenPreview, setFullscreenPreview] = React.useState(false);
+
+  // Quick profile edit states
+  const [isEditingProfileInline, setIsEditingProfileInline] = React.useState(false);
+  const [profileTab, setProfileTab] = React.useState<
+    "personal" | "experience" | "projects" | "education-skills"
+  >("personal");
+  const profileBannerRef = React.useRef<HTMLDivElement>(null);
+
+  const setProfileField = React.useCallback(
+    <K extends keyof Profile>(key: K, value: Profile[K]) => {
+      updateProfile((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    },
+    [updateProfile],
+  );
 
   // Profile-specific wizard states
   const [include, setInclude] = React.useState<Record<SectionKey, boolean>>({
@@ -406,6 +430,8 @@ export function CreateResumeWizard({
   // Initialize reordering lists and source defaults when open changes
   React.useEffect(() => {
     if (open) {
+      setIsEditingProfileInline(false);
+      setProfileTab("personal");
       setStep(defaultStep ?? 1);
       setProfile("fresh");
       // If profile has a name, default to pulling from profile. Else, default to blank.
@@ -600,15 +626,17 @@ export function CreateResumeWizard({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-border p-0">
-          <DialogHeader className="space-y-1 px-4 sm:px-7 pt-4 sm:pt-7">
-            <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-soft text-brand">
-                <FileText className="h-5 w-5" />
+        <DialogContent className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg sm:max-w-4xl gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border-border p-0">
+          <DialogHeader className="space-y-0.5 px-3 sm:px-7 pt-3 sm:pt-7">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-brand-soft text-brand">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-xl font-bold">Create New Resume</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
+                <DialogTitle className="text-base sm:text-xl font-bold">
+                  Create New Resume
+                </DialogTitle>
+                <DialogDescription className="text-[10px] sm:text-xs text-muted-foreground">
                   Build a professional resume in 3 simple steps
                 </DialogDescription>
               </div>
@@ -617,7 +645,7 @@ export function CreateResumeWizard({
 
           <Stepper step={step} />
 
-          <div className="max-h-[55vh] sm:max-h-[60vh] overflow-y-auto px-4 sm:px-7 pb-4 sm:pb-6 bg-background/50">
+          <div className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto px-3 sm:px-7 pb-3 sm:pb-6 bg-background/50">
             {step === 1 && (
               <section className="animate-fade-in space-y-4">
                 <StepHeader
@@ -640,158 +668,699 @@ export function CreateResumeWizard({
               </section>
             )}
 
-            {step === 2 && (
-              <section className="animate-fade-in space-y-4">
-                <StepHeader
-                  index={2}
-                  title="Where should we start from?"
-                  sub="Pick a starting source for your resume content."
-                />
-
-                <div className="mt-5 space-y-4">
-                  {/* Hero Card: Import Existing Resume */}
-                  <button
-                    type="button"
-                    onClick={() => setSource("import")}
-                    className={cn(
-                      "group relative flex w-full items-center gap-4 rounded-2xl border-2 bg-linear-to-r from-brand/10 to-brand-soft/20 p-5 text-left transition-all cursor-pointer shadow-xs hover:border-brand/65 hover:from-brand/15 hover:to-brand-soft/30",
-                      source === "import"
-                        ? "border-brand ring-1 ring-brand bg-brand-soft/30"
-                        : "border-border",
-                    )}
-                  >
-                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-sm">
-                      <FileUp className="h-6 w-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-extrabold text-foreground">
-                          Import Existing Resume
-                        </span>
-                        <span className="rounded-full bg-brand/15 text-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                          Recommended
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground leading-normal">
-                        Best accuracy. We'll extract every section and let you review before
-                        applying.
-                      </p>
-                    </div>
-                    {source === "import" && (
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-brand text-brand-foreground shrink-0 shadow-sm">
-                        <Check className="h-4 w-4" />
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Secondary Options */}
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {sourceOptions
-                      .filter((opt) => opt.id !== "import")
-                      .map((opt) => {
-                        const isProfileDisabled = opt.id === "profile" && !profileData.fullName;
-                        return (
-                          <SelectCard
-                            key={opt.id}
-                            active={source === opt.id}
-                            onClick={() => {
-                              if (isProfileDisabled) {
-                                toast.info("Please fill in your Profile first to pull from it.");
-                                return;
-                              }
-                              setSource(opt.id);
-                            }}
-                            icon={opt.icon}
-                            title={opt.title}
-                            sub={opt.sub}
-                            disabled={isProfileDisabled}
-                          />
-                        );
-                      })}
-                  </div>
-                </div>
-
-                {source === "import" && (
-                  <div className="mt-5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5">
-                    <Label className="text-sm font-semibold">Upload your resume</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Accepts PDF, DOCX, TXT, or images (PNG, JPEG, WebP) (≤ 15MB). Fields are
-                      extracted automatically.
-                    </p>
-                    <Input
-                      type="file"
-                      accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                      onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-                      className="mt-3 h-11 cursor-pointer rounded-xl bg-card"
-                    />
-                    {parseBusy && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-brand font-semibold">
-                        <Sparkles className="h-4 w-4 animate-pulse" />
-                        Scanning and parsing your resume…
-                      </div>
-                    )}
-                    {!parseBusy && parsedData && (
-                      <div className="mt-3 rounded-xl border border-brand/30 bg-brand-soft/30 p-3">
-                        <div className="text-xs font-bold text-brand">
-                          ✓ Fields extracted from {importedFileName}
-                        </div>
-                        <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                          {parsedData.fullName && <div>Name: {parsedData.fullName}</div>}
-                          {parsedData.email && <div>Email: {parsedData.email}</div>}
-                          {parsedData.phone && <div>Phone: {parsedData.phone}</div>}
-                        </div>
-                      </div>
-                    )}
-                    {!parseBusy && !parsedData && importedFileName && (
-                      <div className="mt-2 text-xs text-brand font-semibold">
-                        ✓ {importedFileName} attached
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {source === "github" && (
-                  <div className="mt-5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5">
-                    <Label className="text-sm font-semibold">Connect your GitHub</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Enter your GitHub username — we'll list your public repos so you can pick
-                      which ones become resume projects.
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      <Input
-                        value={ghUsername}
-                        onChange={(e) => setGhUsername(e.target.value)}
-                        placeholder="GitHub username"
-                        className="h-11 rounded-xl"
-                      />
+            {step === 2 &&
+              (isEditingProfileInline ? (
+                <section className="animate-fade-in space-y-4">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
                       <Button
                         type="button"
-                        onClick={() => setGhOpen(true)}
-                        disabled={!ghUsername.trim()}
-                        className="h-11 shrink-0 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsEditingProfileInline(false)}
+                        className="h-8 w-8 rounded-lg"
                       >
-                        <Github className="mr-1.5 h-4 w-4" /> Browse repos
+                        <ArrowLeft className="h-4 w-4" />
                       </Button>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">Quick Edit Profile</h3>
+                        <p className="text-[10px] text-muted-foreground">
+                          Updates save directly to your Career Profile
+                        </p>
+                      </div>
                     </div>
-                    {ghProjects.length > 0 && (
-                      <div className="mt-2 text-xs text-brand font-semibold font-mono">
-                        ✓ {ghProjects.length} repo{ghProjects.length === 1 ? "" : "s"} selected
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] sm:text-xs font-bold text-brand bg-brand-soft px-2 py-0.5 rounded-full">
+                        {profileCompleteness(profileData)}% Complete
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tabs Selector */}
+                  <div className="flex border-b border-border/60 overflow-x-auto scrollbar-none gap-2 pb-2">
+                    {(
+                      [
+                        { id: "personal", label: "Personal" },
+                        { id: "experience", label: "Experience" },
+                        { id: "projects", label: "Projects" },
+                        { id: "education-skills", label: "Edu & Skills" },
+                      ] as const
+                    ).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setProfileTab(t.id)}
+                        className={cn(
+                          "whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border",
+                          profileTab === t.id
+                            ? "bg-brand text-brand-foreground border-brand"
+                            : "bg-muted/40 hover:bg-muted text-muted-foreground border-transparent",
+                        )}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Form Content */}
+                  <div className="space-y-4">
+                    {profileTab === "personal" && (
+                      <div className="space-y-3">
+                        <div className="grid gap-3 grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="quick-fullname" className="text-xs font-semibold">
+                              Full Name
+                            </Label>
+                            <Input
+                              id="quick-fullname"
+                              value={profileData.fullName}
+                              onChange={(e) => setProfileField("fullName", e.target.value)}
+                              placeholder="e.g. Jane Doe"
+                              className="h-9 text-xs rounded-lg"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="quick-title" className="text-xs font-semibold">
+                              Headline / Title
+                            </Label>
+                            <Input
+                              id="quick-title"
+                              value={profileData.title}
+                              onChange={(e) => setProfileField("title", e.target.value)}
+                              placeholder="e.g. Software Engineer"
+                              className="h-9 text-xs rounded-lg"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="quick-email" className="text-xs font-semibold">
+                              Email
+                            </Label>
+                            <Input
+                              id="quick-email"
+                              value={profileData.email}
+                              onChange={(e) => setProfileField("email", e.target.value)}
+                              placeholder="e.g. jane@example.com"
+                              className="h-9 text-xs rounded-lg"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="quick-phone" className="text-xs font-semibold">
+                              Phone
+                            </Label>
+                            <Input
+                              id="quick-phone"
+                              value={profileData.phone}
+                              onChange={(e) => setProfileField("phone", e.target.value)}
+                              placeholder="e.g. +1 234 567 890"
+                              className="h-9 text-xs rounded-lg"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="quick-location" className="text-xs font-semibold">
+                            Location
+                          </Label>
+                          <Input
+                            id="quick-location"
+                            value={profileData.location}
+                            onChange={(e) => setProfileField("location", e.target.value)}
+                            placeholder="e.g. New York, NY"
+                            className="h-9 text-xs rounded-lg"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="quick-summary" className="text-xs font-semibold">
+                            Professional Summary
+                          </Label>
+                          <Textarea
+                            id="quick-summary"
+                            value={profileData.summary}
+                            onChange={(e) => setProfileField("summary", e.target.value)}
+                            placeholder="Brief description of your skills and career highlights..."
+                            rows={3}
+                            className="text-xs rounded-lg resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {profileTab === "experience" && (
+                      <div className="space-y-3">
+                        {profileData.experience.map((exp, idx) => (
+                          <div
+                            key={idx}
+                            className="relative p-3 border border-border/80 rounded-xl bg-muted/10 space-y-2.5"
+                          >
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newExp = profileData.experience.filter((_, i) => i !== idx);
+                                setProfileField("experience", newExp);
+                                setExpOrder(newExp.map((_, i) => i));
+                              }}
+                              className="absolute right-2 top-2 h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+
+                            <div className="grid gap-3 grid-cols-2 pr-6">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                  Role / Title
+                                </Label>
+                                <Input
+                                  value={exp.role}
+                                  onChange={(e) => {
+                                    const updated = profileData.experience.map((x, i) =>
+                                      i === idx ? { ...x, role: e.target.value } : x,
+                                    );
+                                    setProfileField("experience", updated);
+                                  }}
+                                  placeholder="e.g. React Developer"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                  Company
+                                </Label>
+                                <Input
+                                  value={exp.company}
+                                  onChange={(e) => {
+                                    const updated = profileData.experience.map((x, i) =>
+                                      i === idx ? { ...x, company: e.target.value } : x,
+                                    );
+                                    setProfileField("experience", updated);
+                                  }}
+                                  placeholder="e.g. Google"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 grid-cols-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                  Period
+                                </Label>
+                                <Input
+                                  value={exp.period}
+                                  onChange={(e) => {
+                                    const updated = profileData.experience.map((x, i) =>
+                                      i === idx ? { ...x, period: e.target.value } : x,
+                                    );
+                                    setProfileField("experience", updated);
+                                  }}
+                                  placeholder="e.g. 2023 - Present"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-semibold text-muted-foreground">
+                                Bullet points (one per line)
+                              </Label>
+                              <Textarea
+                                value={exp.bullets.join("\n")}
+                                onChange={(e) => {
+                                  const updated = profileData.experience.map((x, i) =>
+                                    i === idx ? { ...x, bullets: e.target.value.split("\n") } : x,
+                                  );
+                                  setProfileField("experience", updated);
+                                }}
+                                placeholder="Describe achievements..."
+                                rows={2}
+                                className="text-xs rounded-lg resize-none"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const newExp = [
+                              ...profileData.experience,
+                              { role: "", company: "", period: "", bullets: [""] },
+                            ];
+                            setProfileField("experience", newExp);
+                            setExpOrder(newExp.map((_, i) => i));
+                          }}
+                          className="w-full h-9 rounded-xl text-xs font-semibold border-dashed"
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" /> Add Experience
+                        </Button>
+                      </div>
+                    )}
+
+                    {profileTab === "projects" && (
+                      <div className="space-y-3">
+                        {profileData.projects.map((proj, idx) => (
+                          <div
+                            key={idx}
+                            className="relative p-3 border border-border/80 rounded-xl bg-muted/10 space-y-2.5"
+                          >
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newProj = profileData.projects.filter((_, i) => i !== idx);
+                                setProfileField("projects", newProj);
+                                setProjectOrder(newProj.map((_, i) => i));
+                              }}
+                              className="absolute right-2 top-2 h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+
+                            <div className="grid gap-3 grid-cols-2 pr-6">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                  Project Name
+                                </Label>
+                                <Input
+                                  value={proj.name}
+                                  onChange={(e) => {
+                                    const updated = profileData.projects.map((x, i) =>
+                                      i === idx ? { ...x, name: e.target.value } : x,
+                                    );
+                                    setProfileField("projects", updated);
+                                  }}
+                                  placeholder="e.g. Portfolio"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                  Tools / Stack
+                                </Label>
+                                <Input
+                                  value={proj.tools}
+                                  onChange={(e) => {
+                                    const updated = profileData.projects.map((x, i) =>
+                                      i === idx ? { ...x, tools: e.target.value } : x,
+                                    );
+                                    setProfileField("projects", updated);
+                                  }}
+                                  placeholder="e.g. React, Tailwind"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-semibold text-muted-foreground">
+                                Bullet points (one per line)
+                              </Label>
+                              <Textarea
+                                value={proj.bullets.join("\n")}
+                                onChange={(e) => {
+                                  const updated = profileData.projects.map((x, i) =>
+                                    i === idx ? { ...x, bullets: e.target.value.split("\n") } : x,
+                                  );
+                                  setProfileField("projects", updated);
+                                }}
+                                placeholder="Describe project details..."
+                                rows={2}
+                                className="text-xs rounded-lg resize-none"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const newProj = [
+                              ...profileData.projects,
+                              { name: "", tools: "", bullets: [""] },
+                            ];
+                            setProfileField("projects", newProj);
+                            setProjectOrder(newProj.map((_, i) => i));
+                          }}
+                          className="w-full h-9 rounded-xl text-xs font-semibold border-dashed"
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" /> Add Project
+                        </Button>
+                      </div>
+                    )}
+
+                    {profileTab === "education-skills" && (
+                      <div className="space-y-4">
+                        {/* Education */}
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-foreground">Education</Label>
+                          <div className="space-y-3">
+                            {profileData.education.map((ed, idx) => (
+                              <div
+                                key={idx}
+                                className="relative p-3 border border-border/80 rounded-xl bg-muted/10 space-y-2.5"
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setProfileField(
+                                      "education",
+                                      profileData.education.filter((_, i) => i !== idx),
+                                    );
+                                  }}
+                                  className="absolute right-2 top-2 h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+
+                                <div className="grid gap-3 grid-cols-2 pr-6">
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      Degree
+                                    </Label>
+                                    <Input
+                                      value={ed.degree}
+                                      onChange={(e) => {
+                                        const updated = profileData.education.map((x, i) =>
+                                          i === idx ? { ...x, degree: e.target.value } : x,
+                                        );
+                                        setProfileField("education", updated);
+                                      }}
+                                      placeholder="e.g. BS Computer Science"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      Institution
+                                    </Label>
+                                    <Input
+                                      value={ed.school}
+                                      onChange={(e) => {
+                                        const updated = profileData.education.map((x, i) =>
+                                          i === idx ? { ...x, school: e.target.value } : x,
+                                        );
+                                        setProfileField("education", updated);
+                                      }}
+                                      placeholder="e.g. MIT"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-3 grid-cols-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      Period
+                                    </Label>
+                                    <Input
+                                      value={ed.year}
+                                      onChange={(e) => {
+                                        const updated = profileData.education.map((x, i) =>
+                                          i === idx ? { ...x, year: e.target.value } : x,
+                                        );
+                                        setProfileField("education", updated);
+                                      }}
+                                      placeholder="e.g. 2019 - 2023"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      CGPA / Grade
+                                    </Label>
+                                    <Input
+                                      value={ed.cgpa ?? ""}
+                                      onChange={(e) => {
+                                        const updated = profileData.education.map((x, i) =>
+                                          i === idx ? { ...x, cgpa: e.target.value } : x,
+                                        );
+                                        setProfileField("education", updated);
+                                      }}
+                                      placeholder="e.g. 3.8/4.0"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setProfileField("education", [
+                                  ...profileData.education,
+                                  { degree: "", school: "", year: "", cgpa: "" },
+                                ]);
+                              }}
+                              className="w-full h-8 rounded-xl text-[11px] font-semibold border-dashed"
+                            >
+                              <Plus className="mr-1 h-3 w-3" /> Add Education
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Skills */}
+                        <div className="space-y-2 pt-3 border-t border-border/40">
+                          <Label className="text-xs font-bold text-foreground">Skills</Label>
+                          <div className="space-y-3">
+                            {profileData.skills.map((s, idx) => (
+                              <div
+                                key={idx}
+                                className="relative p-3 border border-border/80 rounded-xl bg-muted/10 space-y-2.5"
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setProfileField(
+                                      "skills",
+                                      profileData.skills.filter((_, i) => i !== idx),
+                                    );
+                                  }}
+                                  className="absolute right-2 top-2 h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+
+                                <div className="grid gap-3 grid-cols-[120px_1fr] pr-6">
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      Category
+                                    </Label>
+                                    <Input
+                                      value={s.category}
+                                      onChange={(e) => {
+                                        const updated = profileData.skills.map((x, i) =>
+                                          i === idx ? { ...x, category: e.target.value } : x,
+                                        );
+                                        setProfileField("skills", updated);
+                                      }}
+                                      placeholder="e.g. Frontend"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground">
+                                      Items (comma separated)
+                                    </Label>
+                                    <Input
+                                      value={s.items}
+                                      onChange={(e) => {
+                                        const updated = profileData.skills.map((x, i) =>
+                                          i === idx ? { ...x, items: e.target.value } : x,
+                                        );
+                                        setProfileField("skills", updated);
+                                      }}
+                                      placeholder="e.g. React, Vue, HTML"
+                                      className="h-8 text-xs rounded-lg"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setProfileField("skills", [
+                                  ...profileData.skills,
+                                  { category: "", items: "" },
+                                ]);
+                              }}
+                              className="w-full h-8 rounded-xl text-[11px] font-semibold border-dashed"
+                            >
+                              <Plus className="mr-1 h-3 w-3" /> Add Skill Category
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                )}
 
-                {source === "profile" && (
-                  <div className="mt-5 rounded-2xl border border-brand bg-brand-soft/20 p-4 flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-brand" />
-                    <div className="text-xs text-brand font-semibold">
-                      Your master profile details will be auto-synced! You can configure checkboxes
-                      and item orders in the next step.
-                    </div>
+                  <div className="pt-3 flex justify-end gap-2 border-t border-border/60">
+                    <Button
+                      type="button"
+                      onClick={() => setIsEditingProfileInline(false)}
+                      className="h-9 px-4 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 text-xs font-bold"
+                    >
+                      Save & Return
+                    </Button>
                   </div>
-                )}
-              </section>
-            )}
+                </section>
+              ) : (
+                <section className="animate-fade-in space-y-4">
+                  <StepHeader
+                    index={2}
+                    title="Where should we start from?"
+                    sub="Pick a starting source for your resume content."
+                  />
+
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {sourceOptions.map((opt) => {
+                      const profileEmpty = opt.id === "profile" && !profileData.fullName;
+                      return (
+                        <SelectCard
+                          key={opt.id}
+                          active={source === opt.id}
+                          onClick={() => {
+                            if (profileEmpty) {
+                              toast.info("Tip: fill in your Profile for better auto-fill results.");
+                            }
+                            setSource(opt.id);
+                            if (opt.id === "profile") {
+                              setTimeout(() => {
+                                profileBannerRef.current?.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "nearest",
+                                });
+                              }, 80);
+                            }
+                          }}
+                          icon={opt.icon}
+                          title={opt.title}
+                          sub={opt.sub}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {source === "import" && (
+                    <div className="mt-5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5">
+                      <Label className="text-sm font-semibold">Upload your resume</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Accepts PDF, DOCX, TXT, or images (PNG, JPEG, WebP) (≤ 15MB). Fields are
+                        extracted automatically.
+                      </p>
+                      <Input
+                        type="file"
+                        accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+                        className="mt-3 h-11 cursor-pointer rounded-xl bg-card"
+                      />
+                      {parseBusy && (
+                        <div className="mt-3 flex items-center gap-2 text-xs text-brand font-semibold">
+                          <Sparkles className="h-4 w-4 animate-pulse" />
+                          Scanning and parsing your resume…
+                        </div>
+                      )}
+                      {!parseBusy && parsedData && (
+                        <div className="mt-3 rounded-xl border border-brand/30 bg-brand-soft/30 p-3">
+                          <div className="text-xs font-bold text-brand">
+                            ✓ Fields extracted from {importedFileName}
+                          </div>
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            {parsedData.fullName && <div>Name: {parsedData.fullName}</div>}
+                            {parsedData.email && <div>Email: {parsedData.email}</div>}
+                            {parsedData.phone && <div>Phone: {parsedData.phone}</div>}
+                          </div>
+                        </div>
+                      )}
+                      {!parseBusy && !parsedData && importedFileName && (
+                        <div className="mt-2 text-xs text-brand font-semibold">
+                          ✓ {importedFileName} attached
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {source === "github" && (
+                    <div className="mt-5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5">
+                      <Label className="text-sm font-semibold">Connect your GitHub</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Enter your GitHub username — we'll list your public repos so you can pick
+                        which ones become resume projects.
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <Input
+                          value={ghUsername}
+                          onChange={(e) => setGhUsername(e.target.value)}
+                          placeholder="GitHub username"
+                          className="h-11 rounded-xl"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => setGhOpen(true)}
+                          disabled={!ghUsername.trim()}
+                          className="h-11 shrink-0 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold"
+                        >
+                          <Github className="mr-1.5 h-4 w-4" /> Browse repos
+                        </Button>
+                      </div>
+                      {ghProjects.length > 0 && (
+                        <div className="mt-2 text-xs text-brand font-semibold font-mono">
+                          ✓ {ghProjects.length} repo{ghProjects.length === 1 ? "" : "s"} selected
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {source === "profile" && (
+                    <div
+                      ref={profileBannerRef}
+                      className="mt-4 rounded-2xl border border-brand bg-brand-soft/10 p-4 animate-fade-in"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <Sparkles className="h-5 w-5 text-brand shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs font-bold text-brand">
+                              Career Profile Connected
+                            </div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                              {profileData.fullName
+                                ? `Pulling details for ${profileData.fullName} (${profileCompleteness(profileData)}% complete)`
+                                : "Your Career Profile is empty. Fill it to auto-generate your resume!"}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsEditingProfileInline(true)}
+                          className="h-8 rounded-lg border-brand/35 bg-card hover:bg-brand-soft/30 text-brand text-xs font-bold shrink-0 self-start sm:self-center"
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          {profileData.fullName ? "Quick Edit Details" : "Quick Set Up"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              ))}
 
             {step === 3 && (
               <section className="animate-fade-in">
@@ -1184,50 +1753,52 @@ export function CreateResumeWizard({
             )}
           </div>
 
-          <footer className="flex items-center justify-between border-t border-border bg-card px-4 sm:px-6 py-3 sm:py-4 shrink-0">
-            <div className="hidden sm:block">
-              {step === 3 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                  <Sparkles className="h-4 w-4 text-brand" />
-                  <span>AI suggestions live in the editor!</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {step === 1 ? (
-                <Button
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="h-11 rounded-xl px-5 font-bold cursor-pointer bg-card"
-                >
-                  Cancel
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={back}
-                  className="h-11 rounded-xl px-5 font-bold cursor-pointer bg-card"
-                >
-                  <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
-                </Button>
-              )}
-              {step < 3 ? (
-                <Button
-                  onClick={next}
-                  className="h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-5 font-bold cursor-pointer"
-                >
-                  Next <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleCreate}
-                  className="h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-6 font-bold cursor-pointer"
-                >
-                  Create Resume
-                </Button>
-              )}
-            </div>
-          </footer>
+          {!isEditingProfileInline && (
+            <footer className="flex items-center justify-between border-t border-border bg-card px-3 sm:px-6 py-2 sm:py-4 shrink-0">
+              <div className="hidden sm:block">
+                {step === 3 && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+                    <Sparkles className="h-4 w-4 text-brand" />
+                    <span>AI suggestions live in the editor!</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                {step === 1 ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="h-9 sm:h-11 rounded-xl px-3 sm:px-5 text-sm font-bold cursor-pointer bg-card"
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={back}
+                    className="h-9 sm:h-11 rounded-xl px-3 sm:px-5 text-sm font-bold cursor-pointer bg-card"
+                  >
+                    <ArrowLeft className="mr-1 h-3.5 w-3.5 sm:mr-1.5 sm:h-4 sm:w-4" /> Back
+                  </Button>
+                )}
+                {step < 3 ? (
+                  <Button
+                    onClick={next}
+                    className="h-9 sm:h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-4 sm:px-5 text-sm font-bold cursor-pointer"
+                  >
+                    Next <ArrowRight className="ml-1 h-3.5 w-3.5 sm:ml-1.5 sm:h-4 sm:w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleCreate}
+                    className="h-9 sm:h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-4 sm:px-6 text-sm font-bold cursor-pointer"
+                  >
+                    Create Resume
+                  </Button>
+                )}
+              </div>
+            </footer>
+          )}
         </DialogContent>
       </Dialog>
       <GithubImportDialog
@@ -1244,7 +1815,7 @@ function Stepper({ step }: { step: number }) {
   const labels = ["Profile Type", "Source / Import", "Theme & Finish"];
   const mobileLabels = ["Profile", "Source", "Finish"];
   return (
-    <div className="px-4 sm:px-7 py-3.5 sm:py-6 shrink-0">
+    <div className="px-3 sm:px-7 py-2 sm:py-6 shrink-0">
       <div className="flex items-center">
         {labels.map((label, i) => {
           const idx = i + 1;
@@ -1291,15 +1862,15 @@ function Stepper({ step }: { step: number }) {
 
 function StepHeader({ index, title, sub }: { index: number; title: string; sub: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground text-xs font-bold">
+    <div className="flex items-start gap-2 sm:gap-3">
+      <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground text-[10px] sm:text-xs font-bold">
         {index}
       </div>
       <div>
-        <h3 className="text-base font-bold leading-tight">
+        <h3 className="text-sm sm:text-base font-bold leading-tight">
           Step {index}: {title}
         </h3>
-        <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{sub}</p>
       </div>
     </div>
   );
@@ -1326,7 +1897,7 @@ function SelectCard({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group relative flex flex-row sm:flex-col items-center gap-3 rounded-2xl border-2 bg-card p-3 sm:p-4 text-left sm:text-center transition-all cursor-pointer min-h-0 sm:min-h-[155px] justify-start sm:justify-center w-full",
+        "group relative flex flex-row sm:flex-col items-center gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl border-2 bg-card p-2.5 sm:p-4 text-left sm:text-center transition-all cursor-pointer min-h-0 sm:min-h-[155px] justify-start sm:justify-center w-full",
         active
           ? "border-brand bg-brand-soft/40 shadow-soft"
           : "border-border hover:border-brand/40 hover:bg-muted/40",
@@ -1334,21 +1905,21 @@ function SelectCard({
       )}
     >
       {active && (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 sm:top-2.5 sm:translate-y-0 sm:right-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-foreground shrink-0 shadow-sm">
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 sm:top-2.5 sm:translate-y-0 sm:right-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-foreground shrink-0 shadow-sm">
           <Check className="h-3.5 w-3.5" />
         </span>
       )}
       <span
         className={cn(
-          "grid h-10 w-10 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-brand transition-colors",
+          "grid h-8 w-8 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-full bg-brand-soft text-brand transition-colors",
           disabled && "bg-muted text-muted-foreground",
         )}
       >
-        <Icon className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
+        <Icon className="h-4 w-4 sm:h-5.5 sm:w-5.5" />
       </span>
       <div className="flex-1 min-w-0 pr-6 sm:pr-0">
-        <div className="text-xs font-bold leading-tight truncate sm:max-w-[130px]">{title}</div>
-        <div className="mt-0.5 sm:mt-1.5 text-[10px] text-muted-foreground leading-normal max-h-[32px] sm:max-h-[42px] overflow-hidden">
+        <div className="text-xs font-bold leading-tight">{title}</div>
+        <div className="mt-0.5 sm:mt-1.5 text-[10px] text-muted-foreground leading-normal">
           {sub}
         </div>
       </div>

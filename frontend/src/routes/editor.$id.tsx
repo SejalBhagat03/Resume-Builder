@@ -82,6 +82,8 @@ function EditorPage() {
   const [docxBusy, setDocxBusy] = React.useState(false);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [reviewOpen, setReviewOpen] = React.useState(false);
+  // Mobile: which panel is active ("edit" | "preview")
+  const [mobilePanel, setMobilePanel] = React.useState<"edit" | "preview">("edit");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [history, setHistory] = React.useState<any[]>([]);
@@ -322,6 +324,16 @@ function EditorPage() {
 
   const handlePdf = async () => {
     setPdfBusy(true);
+
+    // On mobile the preview panel may be hidden — switch to it so
+    // html2canvas can find the #resume-preview-printable element.
+    const wasEditing = mobilePanel === "edit";
+    if (wasEditing) {
+      setMobilePanel("preview");
+      // Give React one paint cycle to render the panel before capturing
+      await new Promise((r) => setTimeout(r, 120));
+    }
+
     try {
       const { downloadResumePdf } = await import("@/lib/pdf-export");
       const filename = await downloadResumePdf(resume, "resume-preview-printable");
@@ -333,6 +345,8 @@ function EditorPage() {
       toast.error(e instanceof Error ? e.message : "PDF export failed");
     } finally {
       setPdfBusy(false);
+      // Restore the panel the user was on
+      if (wasEditing) setMobilePanel("edit");
     }
   };
 
@@ -356,68 +370,83 @@ function EditorPage() {
 
   return (
     <AppShell>
-      <div className="w-full px-4 py-6 md:px-8 md:py-8">
+      <div className="w-full px-3 py-4 md:px-8 md:py-8">
         {/* Top bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button asChild variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-1 min-w-0 items-center gap-2">
+            <Button asChild variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-xl">
               <Link to="/resumes">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1 sm:flex-initial">
               <Input
                 value={resume.title}
                 onChange={(e) => setResume((r) => (r ? { ...r, title: e.target.value } : null))}
-                className="h-10 max-w-xs rounded-xl border-transparent bg-transparent px-2 text-xl font-bold hover:bg-card focus-visible:bg-card"
+                className="h-9 w-full max-w-[210px] sm:max-w-xs rounded-xl border-transparent bg-transparent px-2 text-base sm:text-xl font-bold hover:bg-card focus-visible:bg-card truncate"
               />
-              <div className="px-2 text-xs text-muted-foreground">
+              <div className="px-2 text-xs text-muted-foreground hidden sm:block">
                 Step {step + 1} of {STEPS.length} — {STEPS[step].label}
               </div>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex shrink-0 flex-wrap gap-2">
+          {/* Action buttons — always labelled, compact on mobile */}
+          <div className="flex shrink-0 items-center gap-1">
+            {/* AI Assistant */}
             <Button
               onClick={() => setAiOpen(true)}
               variant="outline"
-              className="h-10 rounded-xl border-brand/40 bg-brand-soft/40 text-brand hover:bg-brand-soft/70 cursor-pointer animate-pulse-subtle"
+              className="h-9 rounded-xl border-brand/40 bg-brand-soft/40 text-brand hover:bg-brand-soft/70 cursor-pointer px-2.5 sm:px-3 animate-pulse-subtle"
+              title="AI Assistant"
             >
-              <Sparkles className="mr-1.5 h-4 w-4" /> AI Assistant
+              <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
+              <span className="text-xs sm:text-sm font-semibold">AI</span>
             </Button>
+
+            {/* Undo/Redo — only when visual mode */}
             {resume.data.isVisualMode !== false && resume.data.importedLayout && (
-              <div className="flex gap-1 border-r pr-2 border-border mr-1">
+              <div className="flex gap-0.5 border-r pr-1 border-border mr-0.5">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl cursor-pointer"
+                  className="h-9 w-9 rounded-xl cursor-pointer"
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
-                  title="Undo last edit (Ctrl+Z)"
+                  title="Undo (Ctrl+Z)"
                 >
                   <Undo className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl cursor-pointer"
+                  className="h-9 w-9 rounded-xl cursor-pointer"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
-                  title="Redo last edit (Ctrl+Y)"
+                  title="Redo (Ctrl+Y)"
                 >
                   <Redo className="h-4 w-4" />
                 </Button>
               </div>
             )}
-            <Button onClick={handleSave} variant="outline" className="h-10 rounded-xl">
-              <Save className="mr-1.5 h-4 w-4" /> Save
+
+            {/* Save */}
+            <Button
+              onClick={handleSave}
+              variant="outline"
+              className="h-9 rounded-xl px-2.5 sm:px-3"
+              title="Save"
+            >
+              <Save className="h-3.5 w-3.5 sm:mr-1.5" />
+              <span className="text-xs sm:text-sm font-semibold">Save</span>
             </Button>
+
+            {/* DOCX — hidden on mobile, visible md+ */}
             <Button
               onClick={handleDocx}
               disabled={docxBusy}
               variant="outline"
-              className="h-10 rounded-xl border-brand/40 text-brand hover:bg-brand-soft"
+              className="hidden md:flex h-9 rounded-xl border-brand/40 text-brand hover:bg-brand-soft px-3"
             >
               {docxBusy ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -426,32 +455,69 @@ function EditorPage() {
               )}
               DOCX
             </Button>
+
+            {/* Download PDF — short label on mobile */}
             <Button
               onClick={handleDownloadClick}
               disabled={pdfBusy}
-              className="h-10 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold"
+              className="h-9 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold px-2.5 sm:px-4"
             >
               {pdfBusy ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
               ) : (
-                <Download className="mr-1.5 h-4 w-4" />
+                <Download className="h-3.5 w-3.5 sm:mr-1.5" />
               )}
-              Download PDF
+              <span className="text-xs sm:hidden font-bold">PDF</span>
+              <span className="hidden sm:inline text-sm">Download PDF</span>
             </Button>
           </div>
         </div>
 
-        {/* Steps strip */}
-        <ol className="mt-6 grid grid-cols-6 gap-1.5 sm:gap-2">
+        {/* Mobile Edit/Preview tab toggle */}
+        <div className="mt-4 flex rounded-xl border border-border bg-muted/50 p-1 gap-1 lg:hidden">
+          <button
+            onClick={() => setMobilePanel("edit")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
+              mobilePanel === "edit"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            ✏️ Edit
+          </button>
+          <button
+            onClick={() => setMobilePanel("preview")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
+              mobilePanel === "preview"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            👁️ Preview
+          </button>
+        </div>
+
+        {/* Steps strip — only shown in Edit panel on mobile */}
+        <ol
+          className={cn(
+            "mt-4 grid grid-cols-6 gap-1 sm:gap-2",
+            mobilePanel === "preview" && "lg:grid hidden",
+          )}
+        >
           {STEPS.map((s, i) => {
             const done = i < step;
             const active = i === step;
             return (
               <li key={s.key}>
                 <button
-                  onClick={() => setStep(i)}
+                  onClick={() => {
+                    setStep(i);
+                    setMobilePanel("edit");
+                  }}
                   className={cn(
-                    "flex w-full items-center justify-center sm:justify-start gap-2 rounded-xl border p-2 sm:px-3 sm:py-2.5 text-left transition-colors",
+                    "flex w-full items-center justify-center sm:justify-start gap-1.5 rounded-xl border p-1.5 sm:px-3 sm:py-2.5 text-left transition-colors",
                     active && "border-brand bg-brand-soft text-brand",
                     done && !active && "border-brand/40 bg-card text-brand",
                     !active &&
@@ -461,7 +527,7 @@ function EditorPage() {
                 >
                   <span
                     className={cn(
-                      "grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold",
+                      "grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full text-xs font-bold",
                       active
                         ? "bg-brand text-brand-foreground"
                         : done
@@ -469,7 +535,7 @@ function EditorPage() {
                           : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    {done ? <Check className="h-3 w-3" /> : i + 1}
                   </span>
                   <span className="hidden sm:inline truncate text-sm font-semibold">{s.label}</span>
                 </button>
@@ -479,8 +545,14 @@ function EditorPage() {
         </ol>
 
         {/* Two-panel: form + preview */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft md:p-7">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {/* Edit Panel */}
+          <div
+            className={cn(
+              "rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-6 md:p-7",
+              mobilePanel === "preview" && "hidden lg:block",
+            )}
+          >
             {resume.data.importedLayout && (
               <div className="mb-6 rounded-2xl border border-brand/25 bg-brand-soft/35 p-5 text-sm shadow-sm transition-all animate-fade-in">
                 <div className="flex items-start gap-3.5">
@@ -606,7 +678,8 @@ function EditorPage() {
             </div>
           </div>
 
-          <aside className="hidden lg:block">
+          {/* Preview Panel — always visible on desktop, toggled on mobile */}
+          <aside className={cn(mobilePanel === "edit" ? "hidden lg:block" : "block")}>
             <div className="sticky top-24 space-y-4">
               {/* Customization controls */}
               {resume.data.isVisualMode !== false && resume.data.importedLayout ? (

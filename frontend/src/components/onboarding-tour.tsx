@@ -313,13 +313,6 @@ export function OnboardingTour({ forceStart, onTourStarted, isWizardOpen }: Prop
   const visualSteps = TOUR_STEPS.filter((s) => s.targetId !== null);
   const visualCurrentIndex = stepIndex - 1;
 
-  console.log("DEBUG TOUR VALUES:", {
-    stepIndex,
-    targetId: currentStep.targetId,
-    spotlightRect: spotlightRect ? JSON.stringify(spotlightRect) : "null",
-    cardStyle: JSON.stringify(cardStyle),
-  });
-
   return (
     <>
       {/* Background Blocker - stops all click events on backend layout */}

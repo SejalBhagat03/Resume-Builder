@@ -414,7 +414,7 @@ function ResumeCard({
 
 function EmptyResumesState({ onCreateClick }: { onCreateClick: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-brand/20 bg-gradient-to-b from-brand-soft/10 to-transparent px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-brand/20 bg-linear-to-b from-brand-soft/10 to-transparent px-6 py-14 text-center">
       <div className="relative">
         <div className="grid h-20 w-20 place-items-center rounded-3xl bg-brand-soft text-brand shadow-soft">
           <FileText className="h-10 w-10" />

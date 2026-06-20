@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Search, Menu, X, LogIn, LogOut, HelpCircle } from "lucide-react";
 import { LayoutDashboard, FileText, LayoutTemplate, BarChart3, Upload } from "lucide-react";
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate, useMatchRoute } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,8 @@ function MobileDrawerNav({ open, onClose }: { open: boolean; onClose: () => void
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigate = useNavigate();
+  const matchRoute = useMatchRoute();
+  const isEditorPage = !!matchRoute({ to: "/editor/$id" });
   const [session, setSession] = React.useState<Session | null>(null);
   const [bypass, setBypass] = React.useState(false);
 
@@ -150,15 +152,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-6">
-          {/* Mobile menu toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full md:hidden"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          {/* Mobile menu toggle — hidden on editor page (back arrow handles navigation there) */}
+          {!isEditorPage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full md:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
 
           <div className="relative ml-auto hidden w-full max-w-sm md:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
