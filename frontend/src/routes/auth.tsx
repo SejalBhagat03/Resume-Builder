@@ -29,6 +29,11 @@ function AuthPage() {
   const [name, setName] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [showPass, setShowPass] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -234,7 +239,7 @@ function AuthPage() {
               </Button>
             </form>
 
-            {typeof window !== "undefined" &&
+            {isClient &&
               (window.location.hostname === "localhost" ||
                 window.location.hostname === "127.0.0.1") && (
                 <div className="mt-4">
