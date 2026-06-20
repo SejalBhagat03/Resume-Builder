@@ -40,6 +40,19 @@ export function ProfileStep({ data, update }: ProfileStepProps) {
     }
   };
 
+  const linkedinHelper =
+    !data.linkedin && data.fullName ? (
+      <a
+        href={`https://www.google.com/search?q=site:linkedin.com/in/+%22${encodeURIComponent(data.fullName.trim())}%22`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[10px] text-brand hover:underline font-semibold inline-flex items-center gap-1 bg-brand-soft/40 px-2 py-0.5 rounded-md mt-1"
+        title="Google search your name on LinkedIn to easily copy your profile link"
+      >
+        🔍 Find my LinkedIn URL
+      </a>
+    ) : null;
+
   return (
     <Section title="Profile" sub="Basic contact information that appears at the top.">
       <div className="grid gap-4 sm:grid-cols-2 mb-4">
@@ -64,6 +77,7 @@ export function ProfileStep({ data, update }: ProfileStepProps) {
           value={data.linkedin ?? ""}
           onChange={(v) => update({ linkedin: v })}
           placeholder="Username or full URL"
+          helper={linkedinHelper}
           onBlur={() => {
             const val = (data.linkedin ?? "").trim();
             if (val && !val.startsWith("http://") && !val.startsWith("https://")) {

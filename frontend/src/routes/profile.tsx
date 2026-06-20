@@ -106,6 +106,19 @@ function ProfilePage() {
     ]);
   };
 
+  const linkedinHelper =
+    !profile.linkedin && profile.fullName ? (
+      <a
+        href={`https://www.google.com/search?q=site:linkedin.com/in/+%22${encodeURIComponent(profile.fullName.trim())}%22`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[10px] text-brand hover:underline font-semibold inline-flex items-center gap-1 bg-brand-soft/40 px-2 py-0.5 rounded-md mt-1"
+        title="Google search your name on LinkedIn to easily copy your profile link"
+      >
+        🔍 Find my LinkedIn URL
+      </a>
+    ) : null;
+
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-8">
@@ -255,6 +268,7 @@ function ProfilePage() {
               value={profile.linkedin}
               onChange={(v) => set("linkedin", v)}
               placeholder="LinkedIn handle or full URL"
+              helper={linkedinHelper}
               onBlur={() => {
                 const val = profile.linkedin.trim();
                 if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
@@ -698,23 +712,28 @@ function IconField({
   onChange,
   placeholder,
   onBlur,
+  helper,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   onBlur?: () => void;
+  helper?: React.ReactNode;
 }) {
   return (
-    <div className="relative">
-      <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        onBlur={onBlur}
-        className="h-11 rounded-xl pl-9"
-      />
+    <div className="space-y-1">
+      <div className="relative">
+        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          onBlur={onBlur}
+          className="h-11 rounded-xl pl-9"
+        />
+      </div>
+      {helper && <div>{helper}</div>}
     </div>
   );
 }

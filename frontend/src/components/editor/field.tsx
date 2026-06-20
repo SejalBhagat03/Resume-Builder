@@ -7,12 +7,14 @@ export function Field({
   onChange,
   onBlur,
   placeholder,
+  helper,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
   placeholder?: string;
+  helper?: React.ReactNode;
 }) {
   return (
     <div>
@@ -24,6 +26,7 @@ export function Field({
         placeholder={placeholder}
         className="mt-1.5 h-11 rounded-xl"
       />
+      {helper && <div className="mt-1.5">{helper}</div>}
     </div>
   );
 }
