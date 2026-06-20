@@ -31,6 +31,55 @@ function ResumesPage() {
   const navigate = useNavigate();
   const filtered = resumes.filter((r) => r.title.toLowerCase().includes(q.toLowerCase()));
 
+  const [pdfBase64, setPdfBase64] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    async function loadPdf() {
+      setPdfBase64(null);
+      if (!previewResume || !previewResume.data.importedLayout) return;
+
+      try {
+        const { getPdfBinary } = await import("@/lib/pdf-store");
+        const local = await getPdfBinary(previewResume.id);
+        if (!active) return;
+        if (local) {
+          setPdfBase64(local);
+          return;
+        }
+
+        if (previewResume.data.importedPdf?.storagePath) {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data: fileData, error } = await supabase.storage
+            .from("imported_resumes")
+            .download(previewResume.data.importedPdf.storagePath);
+
+          if (!active) return;
+          if (!error && fileData) {
+            const reader = new FileReader();
+            reader.readAsDataURL(fileData);
+            reader.onloadend = () => {
+              if (!active) return;
+              const base64data = (reader.result as string).split(",")[1];
+              setPdfBase64(base64data);
+
+              // Cache it locally in IndexedDB
+              import("@/lib/pdf-store").then(({ storePdfBinary }) => {
+                storePdfBinary(previewResume.id, base64data);
+              });
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("Error loading preview PDF base64:", err);
+      }
+    }
+    loadPdf();
+    return () => {
+      active = false;
+    };
+  }, [previewResume]);
+
   const handleDownloadPdf = async (resumeToDownload: Resume) => {
     setPdfBusy(true);
     try {
@@ -122,7 +171,11 @@ function ResumesPage() {
               {/* Scrollable Preview Canvas */}
               <div className="flex-1 overflow-y-auto bg-muted/20 p-4 sm:p-8 flex justify-center">
                 <div className="w-full max-w-[800px] shadow-lg rounded-xl overflow-hidden bg-white">
-                  <ResumePreview data={previewResume.data} template={previewResume.template} />
+                  <ResumePreview
+                    data={previewResume.data}
+                    template={previewResume.template}
+                    pdfBase64={pdfBase64}
+                  />
                 </div>
               </div>
             </>
