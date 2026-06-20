@@ -231,11 +231,11 @@ function DashboardPage() {
               <div className="flex shrink-0 items-center gap-2">
                 <Button
                   onClick={() => navigate({ to: "/editor/$id", params: { id: recent.id } })}
-                  className="h-10 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90"
+                  className="h-10 w-10 sm:h-10 sm:w-auto rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 p-0 sm:px-4"
+                  title="Continue Editing"
                 >
-                  <Zap className="mr-1.5 h-4 w-4" />{" "}
-                  <span className="hidden sm:inline">Continue Editing</span>
-                  <span className="sm:hidden">Continue</span>
+                  <Zap className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1.5">Continue Editing</span>
                 </Button>
                 <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl">
                   <MoreVertical className="h-4 w-4" />
@@ -265,11 +265,12 @@ function DashboardPage() {
             <Button
               asChild
               variant="outline"
-              className="h-10 shrink-0 rounded-xl border-[oklch(0.65_0.1_150)] text-[oklch(0.35_0.1_150)] hover:bg-[oklch(0.92_0.05_150)]"
+              className="h-10 w-10 sm:h-10 sm:w-auto shrink-0 rounded-xl border-[oklch(0.65_0.1_150)] text-[oklch(0.35_0.1_150)] hover:bg-[oklch(0.92_0.05_150)] p-0 sm:px-4"
+              title="Match Job Description"
             >
-              <Link to="/jd-match">
-                <span className="hidden sm:inline">Match a JD</span>
-                <ChevronRight className="ml-1 h-4 w-4" />
+              <Link to="/jd-match" className="flex items-center justify-center">
+                <span className="hidden sm:inline mr-1">Match a JD</span>
+                <ChevronRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
