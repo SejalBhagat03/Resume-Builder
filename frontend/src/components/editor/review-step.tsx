@@ -2,19 +2,15 @@ import * as React from "react";
 import { Loader2, Download, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "./section";
-import { ResumePreview } from "./resume-preview";
-import type { Resume } from "@/lib/resume-store";
 
 interface ReviewStepProps {
-  data: Resume["data"];
   onPdf: () => void;
   onDocx: () => void;
   pdfBusy: boolean;
   docxBusy: boolean;
-  pdfBase64?: string | null;
 }
 
-export function ReviewStep({ data, onPdf, onDocx, pdfBusy, docxBusy, pdfBase64 }: ReviewStepProps) {
+export function ReviewStep({ onPdf, onDocx, pdfBusy, docxBusy }: ReviewStepProps) {
   return (
     <Section title="Review" sub="Looks great? Download your resume.">
       <div className="flex flex-wrap gap-3">
@@ -44,7 +40,6 @@ export function ReviewStep({ data, onPdf, onDocx, pdfBusy, docxBusy, pdfBase64 }
           Export DOCX
         </Button>
       </div>
-      <ResumePreview data={data} pdfBase64={pdfBase64} />
     </Section>
   );
 }

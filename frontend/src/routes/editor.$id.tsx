@@ -643,12 +643,10 @@ function EditorPage() {
             {step === 4 && <SkillsStep data={resume.data} update={update} />}
             {step === 5 && (
               <ReviewStep
-                data={resume.data}
                 onPdf={handleDownloadClick}
                 onDocx={handleDocx}
                 pdfBusy={pdfBusy}
                 docxBusy={docxBusy}
-                pdfBase64={pdfBase64}
               />
             )}
 
