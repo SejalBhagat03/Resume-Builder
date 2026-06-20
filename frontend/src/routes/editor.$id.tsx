@@ -474,7 +474,7 @@ function EditorPage() {
         </div>
 
         {/* Mobile Edit/Preview tab toggle */}
-        <div className="mt-4 flex rounded-xl border border-border bg-muted/50 p-1 gap-1 lg:hidden">
+        <div className="mt-3 flex rounded-xl border border-border bg-muted/50 p-1 gap-1 lg:hidden">
           <button
             onClick={() => setMobilePanel("edit")}
             className={cn(
@@ -502,7 +502,7 @@ function EditorPage() {
         {/* Steps strip — only shown in Edit panel on mobile */}
         <ol
           className={cn(
-            "mt-4 grid grid-cols-6 gap-1 sm:gap-2",
+            "mt-2.5 grid grid-cols-6 gap-1 sm:gap-2",
             mobilePanel === "preview" && "lg:grid hidden",
           )}
         >
@@ -517,27 +517,31 @@ function EditorPage() {
                     setMobilePanel("edit");
                   }}
                   className={cn(
-                    "flex w-full items-center justify-center sm:justify-start gap-1.5 rounded-xl border p-1.5 sm:px-3 sm:py-2.5 text-left transition-colors",
-                    active && "border-brand bg-brand-soft text-brand",
-                    done && !active && "border-brand/40 bg-card text-brand",
+                    "flex w-full items-center justify-center sm:justify-start gap-1.5 rounded-xl transition-all cursor-pointer",
+                    "border border-transparent sm:border-border sm:bg-card p-1 sm:px-3 sm:py-2.5 text-left",
+                    active &&
+                      "border-brand/35 bg-brand-soft/50 sm:border-brand sm:bg-brand-soft text-brand shadow-sm sm:shadow-none",
+                    done &&
+                      !active &&
+                      "border-brand/10 bg-brand-soft/20 sm:border-brand/40 sm:bg-card text-brand",
                     !active &&
                       !done &&
-                      "border-border bg-card text-muted-foreground hover:border-brand/30",
+                      "border-transparent bg-transparent sm:border-border sm:bg-card text-muted-foreground hover:border-brand/30",
                   )}
                 >
                   <span
                     className={cn(
-                      "grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full text-xs font-bold",
+                      "grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-transform",
                       active
-                        ? "bg-brand text-brand-foreground"
+                        ? "bg-brand text-brand-foreground scale-105 shadow-sm"
                         : done
                           ? "bg-brand/20 text-brand"
                           : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {done ? <Check className="h-3 w-3" /> : i + 1}
+                    {done ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : i + 1}
                   </span>
-                  <span className="hidden sm:inline truncate text-sm font-semibold">{s.label}</span>
+                  <span className="hidden sm:inline truncate text-sm font-bold">{s.label}</span>
                 </button>
               </li>
             );
@@ -545,7 +549,7 @@ function EditorPage() {
         </ol>
 
         {/* Two-panel: form + preview */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {/* Edit Panel */}
           <div
             className={cn(
