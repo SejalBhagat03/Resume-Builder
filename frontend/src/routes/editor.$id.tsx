@@ -678,6 +678,21 @@ function EditorPage() {
                 </Button>
               )}
             </div>
+
+            {/* Mobile bottom live preview — lets users see what they are making in real-time as they edit, without forcing tab switching */}
+            <div className="mt-8 pt-6 border-t border-border/60 lg:hidden">
+              <div className="mb-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Live Preview
+              </div>
+              <div className="rounded-xl border border-border bg-card p-2 shadow-sm overflow-hidden">
+                <ResumePreview
+                  data={resume.data}
+                  template={resume.template}
+                  pdfBase64={pdfBase64}
+                  forceTemplatePreview={resume.data.isVisualMode === false}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Preview Panel — always visible on desktop, toggled on mobile */}
