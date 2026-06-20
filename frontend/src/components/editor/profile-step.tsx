@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Section } from "./section";
 import { Field } from "./field";
+import { LocationInput } from "@/components/ui/location-input";
 import { generateSummary } from "@/lib/ai.functions";
 import type { Resume } from "@/lib/resume-store";
 import { toast } from "sonner";
@@ -59,7 +60,14 @@ export function ProfileStep({ data, update }: ProfileStepProps) {
         <Field label="Full name" value={data.fullName} onChange={(v) => update({ fullName: v })} />
         <Field label="Email" value={data.email} onChange={(v) => update({ email: v })} />
         <Field label="Phone" value={data.phone} onChange={(v) => update({ phone: v })} />
-        <Field label="Location" value={data.location} onChange={(v) => update({ location: v })} />
+        <div>
+          <Label>Location</Label>
+          <LocationInput
+            value={data.location}
+            onChange={(v) => update({ location: v })}
+            className="mt-1.5"
+          />
+        </div>
         <Field
           label="Website / Portfolio"
           value={data.website ?? ""}

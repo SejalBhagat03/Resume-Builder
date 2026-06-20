@@ -36,6 +36,7 @@ import { RoleRecommendations } from "@/components/role-recommendations";
 import { generateSummary } from "@/lib/ai-mock";
 import { GithubImportDialog, type ImportedProject } from "@/components/github-import-dialog";
 import { parseResumeFile } from "@/lib/parse.functions";
+import { LocationInput } from "@/components/ui/location-input";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -241,8 +242,8 @@ function ProfilePage() {
               onChange={(v) => set("phone", v)}
               placeholder="Phone"
             />
-            <IconField
-              icon={MapPin}
+            <LocationInput
+              icon
               value={profile.location}
               onChange={(v) => set("location", v)}
               placeholder="Location"

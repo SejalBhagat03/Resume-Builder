@@ -54,6 +54,7 @@ import {
   type ImportedProject,
 } from "@/components/github-import-dialog";
 import { toast } from "sonner";
+import { LocationInput } from "@/components/ui/location-input";
 
 const profileOptions: {
   id: ProfileType;
@@ -784,10 +785,10 @@ export function CreateResumeWizard({
                           <Label htmlFor="quick-location" className="text-xs font-semibold">
                             Location
                           </Label>
-                          <Input
+                          <LocationInput
                             id="quick-location"
                             value={profileData.location}
-                            onChange={(e) => setProfileField("location", e.target.value)}
+                            onChange={(v) => setProfileField("location", v)}
                             placeholder="e.g. New York, NY"
                             className="h-9 text-xs rounded-lg"
                           />
