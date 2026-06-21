@@ -27,6 +27,8 @@ import {
   AlignRight,
   Bold,
   Move,
+  Palette,
+  CheckCircle2,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,14 @@ import { SkillsStep } from "@/components/editor/skills-step";
 import { AdditionalStep } from "@/components/editor/additional-step";
 import { ReviewStep } from "@/components/editor/review-step";
 import { ResumePreview } from "@/components/editor/resume-preview";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 export const Route = createFileRoute("/editor/$id")({
   head: () => ({
@@ -78,12 +88,30 @@ function EditorPage() {
   const [resume, setResume] = React.useState<Resume | null>(null);
   const [loadingResume, setLoadingResume] = React.useState(true);
   const [step, setStep] = React.useState(0);
+  const [activeTab, setActiveTab] = React.useState<string>("profile");
+  const [panelOpen, setPanelOpen] = React.useState<boolean>(true);
+  const [zoom, setZoom] = React.useState<number>(1.0);
+
   const [pdfBusy, setPdfBusy] = React.useState(false);
   const [docxBusy, setDocxBusy] = React.useState(false);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [reviewOpen, setReviewOpen] = React.useState(false);
-  // Mobile: which panel is active ("edit" | "preview")
-  const [mobilePanel, setMobilePanel] = React.useState<"edit" | "preview">("edit");
+  // Mobile Picture-in-Picture preview minimization state
+  const [pipMinimized, setPipMinimized] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [mobileView, setMobileView] = React.useState<"edit" | "preview">("edit");
+
+  React.useEffect(() => {
+    if (activeTab === "review") {
+      setMobileView("preview");
+    } else {
+      setMobileView("edit");
+    }
+  }, [activeTab]);
+
+  const [customizationOpen, setCustomizationOpen] = React.useState(false);
+  const [stylesFeedbackActive, setStylesFeedbackActive] = React.useState(false);
+  const previewScrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [history, setHistory] = React.useState<any[]>([]);
@@ -218,6 +246,85 @@ function EditorPage() {
     load();
   }, [id]);
 
+  // Smooth scroll and flash feedback when customization options change
+  const lastCustomizationRef = React.useRef<string>("");
+  const lastTemplateRef = React.useRef<string>("");
+
+  const template = resume?.template;
+  const customization = resume?.data.customization;
+  const hasResume = !!resume;
+
+  React.useEffect(() => {
+    if (!hasResume) return;
+    const currentCustomization = JSON.stringify(customization || {});
+    const currentTemplate = template || "";
+
+    // Skip trigger on initial load
+    if (lastCustomizationRef.current === "" && lastTemplateRef.current === "") {
+      lastCustomizationRef.current = currentCustomization;
+      lastTemplateRef.current = currentTemplate;
+      return;
+    }
+
+    if (
+      lastCustomizationRef.current !== currentCustomization ||
+      lastTemplateRef.current !== currentTemplate
+    ) {
+      lastCustomizationRef.current = currentCustomization;
+      lastTemplateRef.current = currentTemplate;
+
+      // Scroll preview panel to align with the preview canvas top offset
+      const canvasContainer = document.getElementById("preview-canvas-container");
+      if (canvasContainer && previewScrollContainerRef.current) {
+        const topOffset = canvasContainer.offsetTop;
+        previewScrollContainerRef.current.scrollTo({
+          top: Math.max(0, topOffset - 12),
+          behavior: "smooth",
+        });
+      }
+
+      // Trigger temporary glowing border & applied indicator feedback
+      setStylesFeedbackActive(true);
+      const timer = setTimeout(() => setStylesFeedbackActive(false), 900);
+      return () => clearTimeout(timer);
+    }
+  }, [template, customization, hasResume]);
+
+  // Automatically scroll preview panel to align with active step tab
+  React.useEffect(() => {
+    if (loadingResume) return;
+
+    let targetId = "";
+    if (step === 0) {
+      targetId = "preview-canvas-container";
+    } else if (step === 1) {
+      targetId = "preview-section-education";
+    } else if (step === 2) {
+      targetId = "preview-section-experience";
+    } else if (step === 3) {
+      targetId = "preview-section-projects";
+    } else if (step === 4) {
+      targetId = "preview-section-skills";
+    } else if (step === 5) {
+      targetId = "preview-canvas-container";
+    }
+
+    if (targetId) {
+      const targetElement = document.getElementById(targetId);
+      if (targetElement && previewScrollContainerRef.current) {
+        const parentOffset = previewScrollContainerRef.current.getBoundingClientRect().top;
+        const elemOffset = targetElement.getBoundingClientRect().top;
+        const currentScroll = previewScrollContainerRef.current.scrollTop;
+        const targetScroll = currentScroll + (elemOffset - parentOffset) - 16;
+
+        previewScrollContainerRef.current.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: "smooth",
+        });
+      }
+    }
+  }, [step, loadingResume]);
+
   if (loadingResume) {
     return (
       <AppShell>
@@ -325,15 +432,6 @@ function EditorPage() {
   const handlePdf = async () => {
     setPdfBusy(true);
 
-    // On mobile the preview panel may be hidden — switch to it so
-    // html2canvas can find the #resume-preview-printable element.
-    const wasEditing = mobilePanel === "edit";
-    if (wasEditing) {
-      setMobilePanel("preview");
-      // Give React one paint cycle to render the panel before capturing
-      await new Promise((r) => setTimeout(r, 120));
-    }
-
     try {
       const { downloadResumePdf } = await import("@/lib/pdf-export");
       const filename = await downloadResumePdf(resume, "resume-preview-printable");
@@ -345,8 +443,6 @@ function EditorPage() {
       toast.error(e instanceof Error ? e.message : "PDF export failed");
     } finally {
       setPdfBusy(false);
-      // Restore the panel the user was on
-      if (wasEditing) setMobilePanel("edit");
     }
   };
 
@@ -368,515 +464,704 @@ function EditorPage() {
     }
   };
 
+  const RAIL_TABS = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "education", label: "Education", icon: GraduationCap },
+    { id: "experience", label: "Experience", icon: Briefcase },
+    { id: "projects", label: "Projects", icon: FolderGit2 },
+    { id: "skills", label: "Skills", icon: Wrench },
+    { id: "design", label: "Design", icon: Palette },
+    { id: "ai", label: "Gemini AI", icon: Sparkles },
+    { id: "review", label: "Review", icon: CheckCircle2 },
+  ] as const;
+
+  const handleTabClick = (tabId: string) => {
+    setMobileView("edit");
+    if (activeTab === tabId) {
+      setPanelOpen(!panelOpen);
+    } else {
+      setActiveTab(tabId);
+      setPanelOpen(true);
+      const stepIdx = STEPS.findIndex((s) => s.key === tabId);
+      if (stepIdx >= 0) {
+        setStep(stepIdx);
+      } else if (tabId === "review") {
+        setStep(5);
+      }
+    }
+  };
+
+  const changeStep = (newStep: number) => {
+    setMobileView("edit");
+    setStep(newStep);
+    if (newStep >= 0 && newStep < 5) {
+      setActiveTab(STEPS[newStep].key);
+    } else if (newStep === 5) {
+      setActiveTab("review");
+    }
+    setPanelOpen(true);
+  };
+
+  const renderDesignPanel = () => {
+    return (
+      <div className="space-y-5">
+        <div className="text-left select-none mb-2">
+          <h3 className="text-sm font-bold text-foreground">Customization Styles</h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Tweak the visual layout, typography, colors, and margins.
+          </p>
+        </div>
+
+        {resume.data.importedLayout && resume.data.isVisualMode !== false ? (
+          <div className="rounded-xl border border-brand/20 bg-brand-soft/20 p-4 space-y-3">
+            <div className="font-bold text-brand-dark text-xs flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4" /> Visual Edit Mode Active
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed text-left">
+              Layout options, colors, and font sizes are locked to match your uploaded PDF exactly.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 rounded-lg text-xs font-bold bg-background hover:bg-brand-soft border-brand/35 text-brand cursor-pointer shadow-sm"
+              onClick={() => {
+                update({ isVisualMode: false });
+                toast.info("Switched to Dynamic Template Mode.");
+              }}
+            >
+              Switch to Dynamic Template Mode
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Layout Template
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {(["ats-professional", "modern", "minimal", "creative", "two-column"] as const).map(
+                  (t) => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setResume((r) => (r ? { ...r, template: t } : null));
+                        saveResume({ ...resume, template: t });
+                      }}
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-center text-xs font-semibold capitalize transition-all cursor-pointer",
+                        resume.template === t
+                          ? "border-brand bg-brand-soft text-brand shadow-sm font-bold"
+                          : "border-border bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground",
+                      )}
+                    >
+                      {t.replace("-", " ")}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div className="h-px bg-border my-4" />
+
+            <div className="text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Accent Color
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { name: "Brand", value: "" },
+                  { name: "Ocean", value: "#0284c7" },
+                  { name: "Emerald", value: "#059669" },
+                  { name: "Indigo", value: "#4f46e5" },
+                  { name: "Amber", value: "#d97706" },
+                  { name: "Crimson", value: "#dc2626" },
+                  { name: "Slate", value: "#475569" },
+                ].map((col) => (
+                  <button
+                    key={col.name}
+                    onClick={() => updateCustomization({ accentColor: col.value })}
+                    className={cn(
+                      "flex h-7 items-center justify-center rounded-lg border px-2.5 text-[11px] font-semibold transition-all cursor-pointer",
+                      (resume.data.customization?.accentColor ?? "") === col.value
+                        ? "border-brand bg-brand-soft text-brand font-bold"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {col.value ? (
+                      <span
+                        className="mr-1 h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: col.value }}
+                      />
+                    ) : (
+                      <span className="mr-1 h-2.5 w-2.5 rounded-full bg-brand" />
+                    )}
+                    {col.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-px bg-border my-4" />
+
+            <div className="grid grid-cols-2 gap-4 text-left">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Font Size
+                </h4>
+                <div className="flex gap-1.5">
+                  {(["sm", "md", "lg"] as const).map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => updateCustomization({ fontSize: sz })}
+                      className={cn(
+                        "flex-1 rounded-lg border py-1.5 text-center text-xs font-semibold capitalize transition-all cursor-pointer",
+                        (resume.data.customization?.fontSize ?? "md") === sz
+                          ? "border-brand bg-brand-soft text-brand font-bold"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {sz === "sm" ? "Small" : sz === "md" ? "Medium" : "Large"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Spacing
+                </h4>
+                <div className="flex gap-1.5">
+                  {(["sm", "md", "lg"] as const).map((sp) => (
+                    <button
+                      key={sp}
+                      onClick={() => updateCustomization({ spacing: sp })}
+                      className={cn(
+                        "flex-1 rounded-lg border py-1.5 text-center text-xs font-semibold capitalize transition-all cursor-pointer",
+                        (resume.data.customization?.spacing ?? "md") === sp
+                          ? "border-brand bg-brand-soft text-brand font-bold"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {sp === "sm" ? "Compact" : sp === "md" ? "Normal" : "Relaxed"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderPanelContent = () => {
+    if (activeTab === "profile") {
+      return <ProfileStep data={resume.data} update={update} />;
+    }
+    if (activeTab === "education") {
+      return <EducationStep data={resume.data} update={update} />;
+    }
+    if (activeTab === "experience") {
+      return <ExperienceStep data={resume.data} update={update} />;
+    }
+    if (activeTab === "projects") {
+      return <ProjectsStep data={resume.data} update={update} />;
+    }
+    if (activeTab === "skills") {
+      return <SkillsStep data={resume.data} update={update} />;
+    }
+    if (activeTab === "design") {
+      return renderDesignPanel();
+    }
+    if (activeTab === "ai") {
+      return (
+        <AiAssistantPanel
+          open={false}
+          onOpenChange={() => {}}
+          resume={resume}
+          onApply={setResume}
+          inline={true}
+        />
+      );
+    }
+    if (activeTab === "review") {
+      return (
+        <div className="space-y-6">
+          <ReviewStep
+            onPdf={handleDownloadClick}
+            onDocx={handleDocx}
+            pdfBusy={pdfBusy}
+            docxBusy={docxBusy}
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const showStepFooter = [
+    "profile",
+    "education",
+    "experience",
+    "projects",
+    "skills",
+    "review",
+  ].includes(activeTab);
+
   return (
     <AppShell>
-      <div className="w-full px-3 py-4 md:px-8 md:py-8">
-        {/* Top bar */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-1 min-w-0 items-center gap-2">
-            <Button asChild variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-xl">
+      <div className="flex flex-col h-screen w-screen bg-background overflow-hidden font-sans select-none">
+        {/* Top Control Bar */}
+        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 shrink-0">
+          {/* Left section: back button, document title, save status */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg shrink-0"
+              title="Back to Resumes"
+            >
               <Link to="/resumes">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <div className="min-w-0 flex-1 sm:flex-initial">
+
+            <div className="h-4 w-px bg-border shrink-0" />
+
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
               <Input
                 value={resume.title}
                 onChange={(e) => setResume((r) => (r ? { ...r, title: e.target.value } : null))}
-                className="h-9 w-full max-w-[210px] sm:max-w-xs rounded-xl border-transparent bg-transparent px-2 text-base sm:text-xl font-bold hover:bg-card focus-visible:bg-card truncate"
+                onBlur={handleSave}
+                className="h-8 w-full max-w-[140px] sm:max-w-[200px] border-transparent bg-transparent hover:bg-muted/50 focus:bg-background px-2 text-xs sm:text-sm font-bold truncate rounded-lg transition-colors"
               />
-              <div className="px-2 text-xs text-muted-foreground hidden sm:block">
-                Step {step + 1} of {STEPS.length} — {STEPS[step].label}
-              </div>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline-flex items-center gap-1 font-medium bg-muted px-2 py-0.5 rounded-full shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Saved
+              </span>
             </div>
           </div>
 
-          {/* Action buttons — always labelled, compact on mobile */}
-          <div className="flex shrink-0 items-center gap-1">
-            {/* AI Assistant */}
+          {/* Center section: Undo/Redo & Zoom controls (desktop only) */}
+          <div className="hidden lg:flex items-center gap-4 bg-muted/40 border border-border px-3 py-1 rounded-xl">
+            {/* Undo/Redo */}
+            {resume.data.isVisualMode !== false && resume.data.importedLayout && (
+              <>
+                <div className="flex gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={handleUndo}
+                    disabled={historyIndex <= 0}
+                    title="Undo (Ctrl+Z)"
+                  >
+                    <Undo className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={handleRedo}
+                    disabled={historyIndex >= history.length - 1}
+                    title="Redo (Ctrl+Y)"
+                  >
+                    <Redo className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="h-3 w-px bg-border" />
+              </>
+            )}
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-lg"
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                disabled={zoom <= 0.5}
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-[11px] font-mono font-bold w-10 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-lg"
+                onClick={() => setZoom((z) => Math.min(2.0, z + 0.1))}
+                disabled={zoom >= 2.0}
+                title="Zoom In"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground font-semibold"
+                onClick={() => setZoom(1.0)}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          {/* Right section: AI Suggestions, Save, Export */}
+          <div className="flex items-center gap-1.5">
+            {/* Quick AI Toggle */}
             <Button
-              onClick={() => setAiOpen(true)}
+              onClick={() => handleTabClick("ai")}
               variant="outline"
-              className="h-9 rounded-xl border-brand/40 bg-brand-soft/40 text-brand hover:bg-brand-soft/70 cursor-pointer px-2.5 sm:px-3 animate-pulse-subtle"
-              title="AI Assistant"
+              className={cn(
+                "h-8 rounded-lg border-brand/40 px-2.5 text-xs font-bold transition-all cursor-pointer shrink-0",
+                activeTab === "ai"
+                  ? "bg-brand text-brand-foreground hover:bg-brand/90"
+                  : "bg-brand-soft/40 text-brand hover:bg-brand-soft/70",
+              )}
             >
-              <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="text-xs sm:text-sm font-semibold">AI</span>
+              <Sparkles className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Gemini AI</span>
+              <span className="sm:hidden">AI</span>
             </Button>
 
-            {/* Undo/Redo — only when visual mode */}
+            {/* Undo/Redo for Mobile */}
             {resume.data.isVisualMode !== false && resume.data.importedLayout && (
-              <div className="flex gap-0.5 border-r pr-1 border-border mr-0.5">
+              <div className="flex lg:hidden gap-0.5 border-r pr-1.5 mr-0.5">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 rounded-xl cursor-pointer"
+                  className="h-8 w-8 rounded-lg"
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
-                  title="Undo (Ctrl+Z)"
                 >
-                  <Undo className="h-4 w-4" />
+                  <Undo className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 rounded-xl cursor-pointer"
+                  className="h-8 w-8 rounded-lg"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
-                  title="Redo (Ctrl+Y)"
                 >
-                  <Redo className="h-4 w-4" />
+                  <Redo className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
 
-            {/* Save */}
-            <Button
-              onClick={handleSave}
-              variant="outline"
-              className="h-9 rounded-xl px-2.5 sm:px-3"
-              title="Save"
-            >
-              <Save className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="text-xs sm:text-sm font-semibold">Save</span>
-            </Button>
-
-            {/* DOCX — hidden on mobile, visible md+ */}
-            <Button
-              onClick={handleDocx}
-              disabled={docxBusy}
-              variant="outline"
-              className="hidden md:flex h-9 rounded-xl border-brand/40 text-brand hover:bg-brand-soft px-3"
-            >
-              {docxBusy ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <FileDown className="mr-1.5 h-4 w-4" />
-              )}
-              DOCX
-            </Button>
-
-            {/* Download PDF — short label on mobile */}
+            {/* Download PDF */}
             <Button
               onClick={handleDownloadClick}
               disabled={pdfBusy}
-              className="h-9 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold px-2.5 sm:px-4"
+              className="h-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-extrabold px-3 text-xs flex items-center gap-1.5 shrink-0"
             >
               {pdfBusy ? (
-                <Loader2 className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Download className="h-3.5 w-3.5 sm:mr-1.5" />
+                <Download className="h-3.5 w-3.5" />
               )}
-              <span className="text-xs sm:hidden font-bold">PDF</span>
-              <span className="hidden sm:inline text-sm">Download PDF</span>
+              <span className="hidden sm:inline">Download PDF</span>
+              <span className="sm:hidden">Download</span>
             </Button>
           </div>
-        </div>
+        </header>
 
-        {/* Mobile Edit/Preview tab toggle */}
-        <div className="mt-3 flex rounded-xl border border-border bg-muted/50 p-1 gap-1 lg:hidden">
-          <button
-            onClick={() => setMobilePanel("edit")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
-              mobilePanel === "edit"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            ✏️ Edit
-          </button>
-          <button
-            onClick={() => setMobilePanel("preview")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all",
-              mobilePanel === "preview"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            👁️ Preview
-          </button>
-        </div>
-
-        {/* Steps strip — only shown in Edit panel on mobile */}
-        <ol
-          className={cn(
-            "mt-2.5 grid grid-cols-6 gap-1 sm:gap-2",
-            mobilePanel === "preview" && "lg:grid hidden",
-          )}
-        >
-          {STEPS.map((s, i) => {
-            const done = i < step;
-            const active = i === step;
-            return (
-              <li key={s.key}>
-                <button
-                  onClick={() => {
-                    setStep(i);
-                    setMobilePanel("edit");
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-center sm:justify-start gap-1.5 rounded-xl transition-all cursor-pointer",
-                    "border border-transparent sm:border-border sm:bg-card p-1 sm:px-3 sm:py-2.5 text-left",
-                    active &&
-                      "border-brand/35 bg-brand-soft/50 sm:border-brand sm:bg-brand-soft text-brand shadow-sm sm:shadow-none",
-                    done &&
-                      !active &&
-                      "border-brand/10 bg-brand-soft/20 sm:border-brand/40 sm:bg-card text-brand",
-                    !active &&
-                      !done &&
-                      "border-transparent bg-transparent sm:border-border sm:bg-card text-muted-foreground hover:border-brand/30",
-                  )}
-                >
-                  <span
+        {/* Main Work Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Canva Slim Rail (Desktop only) */}
+          <nav className="hidden lg:flex w-16 bg-card border-r border-border flex-col items-center py-4 justify-between shrink-0 z-10">
+            <div className="w-full flex flex-col items-center gap-2">
+              {RAIL_TABS.map((tab) => {
+                const active = activeTab === tab.id && panelOpen;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab.id)}
                     className={cn(
-                      "grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full text-xs font-extrabold transition-transform",
+                      "w-12 h-12 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer relative group",
                       active
-                        ? "bg-brand text-brand-foreground scale-105 shadow-sm"
-                        : done
-                          ? "bg-brand/20 text-brand"
-                          : "bg-muted text-muted-foreground",
+                        ? "bg-brand text-brand-foreground shadow-sm scale-105"
+                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                     )}
+                    title={tab.label}
                   >
-                    {done ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : i + 1}
-                  </span>
-                  <span className="hidden sm:inline truncate text-sm font-bold">{s.label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+                    <tab.icon className="h-5 w-5" />
+                    <span className="text-[9px] font-bold mt-1 tracking-tight truncate w-full px-1 scale-90 origin-center">
+                      {tab.label}
+                    </span>
+                    {active && (
+                      <span className="absolute left-0 top-3 bottom-3 w-1 rounded-r bg-brand-foreground" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Two-panel: form + preview */}
-        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          {/* Edit Panel */}
+            <div className="text-[8px] font-extrabold tracking-widest text-muted-foreground uppercase opacity-45">
+              v1.2
+            </div>
+          </nav>
+
+          {/* Edit Panel (Desktop side panel, mobile full height) */}
           <div
             className={cn(
-              "rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-6 md:p-7",
-              mobilePanel === "preview" && "hidden lg:block",
+              "h-full border-border bg-card flex flex-col transition-all duration-300 relative z-0 shrink-0 shadow-sm w-full lg:border-r",
+              panelOpen ? "lg:w-[380px]" : "lg:w-0 lg:overflow-hidden lg:border-r-0",
             )}
           >
-            {resume.data.importedLayout && (
-              <div className="mb-6 rounded-2xl border border-brand/25 bg-brand-soft/35 p-5 text-sm shadow-sm transition-all animate-fade-in">
-                <div className="flex items-start gap-3.5">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand/10 text-brand shrink-0">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <h4 className="font-bold text-foreground text-sm">
-                        {resume.data.isVisualMode !== false
-                          ? "Visual Edit Mode Active"
-                          : "Template Mode Active"}
-                      </h4>
-                      <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[10px] font-bold text-brand uppercase tracking-wider">
-                        {resume.data.isVisualMode !== false ? "Original Layout" : "Dynamic Layout"}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                      {resume.data.isVisualMode !== false ? (
-                        <>
-                          We've preserved the exact visual styling and layout of your uploaded PDF.
-                          <span className="block mt-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
-                            ✅ Your Profile, Education, Experience, Projects, and Skills are
-                            auto-filled on the left — use the form tabs to edit any section
-                            directly, or click on the preview to make visual edits.
-                          </span>
-                          <strong className="block mt-1 text-amber-700 dark:text-amber-500">
-                            ⚠️ Visual Edit Mode is optimized for minor text updates. Use "Convert to
-                            Native" for extensive restructuring.
-                          </strong>
-                        </>
-                      ) : (
-                        <>
-                          You are currently using one of our built-in templates. Your original
-                          imported visual layout is preserved.
-                        </>
-                      )}
-                    </p>
-                    <div className="mt-3.5 flex flex-wrap gap-2">
-                      {resume.data.isVisualMode !== false ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 rounded-lg text-xs bg-background hover:bg-muted border-brand/35 text-brand hover:text-brand font-semibold cursor-pointer shadow-sm"
-                            onClick={handleConvertToNative}
-                          >
-                            ✨ Convert to Native
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 rounded-lg text-xs hover:bg-muted font-medium text-muted-foreground hover:text-foreground cursor-pointer"
-                            onClick={() => {
-                              update({ isVisualMode: false });
-                              toast.info("Switched to Template Mode. You can toggle back anytime.");
-                            }}
-                          >
-                            Use Template Mode
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-lg text-xs bg-background hover:bg-brand-soft border-brand/35 text-brand hover:text-brand font-semibold cursor-pointer shadow-sm"
-                          onClick={() => {
-                            update({ isVisualMode: true });
-                            toast.success("Restored Visual Edit Mode!");
-                          }}
-                        >
-                          ↩ Switch to Visual Edit Mode
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+            {/* Mobile View Toggle: Edit vs Preview */}
+            <div className="lg:hidden flex border-b border-border p-2 bg-card justify-center shrink-0">
+              <div className="grid w-full max-w-[280px] grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+                <button
+                  onClick={() => setMobileView("edit")}
+                  className={cn(
+                    "rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer",
+                    mobileView === "edit"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Edit Resume
+                </button>
+                <button
+                  onClick={() => setMobileView("preview")}
+                  className={cn(
+                    "rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer",
+                    mobileView === "preview"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Preview PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Header Steps Strip (only if on mobile/tablet AND edit view is active) */}
+            {mobileView === "edit" && (
+              <div className="lg:hidden border-b border-border bg-card py-2 px-3 shrink-0">
+                <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
+                  {STEPS.map((s, i) => {
+                    const done = i < step;
+                    const active = i === step;
+                    const Icon = s.icon;
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => {
+                          setStep(i);
+                          setActiveTab(s.key);
+                          setPanelOpen(true);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all shrink-0 cursor-pointer border",
+                          active
+                            ? "bg-brand text-brand-foreground border-brand shadow-xs"
+                            : done
+                              ? "bg-brand-soft/40 text-brand border-brand-soft/50 hover:bg-brand-soft/60"
+                              : "bg-muted/40 text-muted-foreground border-border hover:bg-muted",
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0 animate-fade-in" />
+                        <span>{s.label}</span>
+                        {done && !active && <Check className="h-3 w-3 stroke-3 shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
-            {step === 0 && <ProfileStep data={resume.data} update={update} />}
-            {step === 1 && <EducationStep data={resume.data} update={update} />}
-            {step === 2 && <ExperienceStep data={resume.data} update={update} />}
-            {step === 3 && <ProjectsStep data={resume.data} update={update} />}
-            {step === 4 && <SkillsStep data={resume.data} update={update} />}
-            {step === 5 && (
-              <ReviewStep
-                onPdf={handleDownloadClick}
-                onDocx={handleDocx}
-                pdfBusy={pdfBusy}
-                docxBusy={docxBusy}
-              />
-            )}
 
-            <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
+            {/* Panel Title (Desktop only) */}
+            <div className="hidden lg:flex h-12 border-b border-border items-center justify-between px-4 shrink-0 bg-muted/15">
+              <span className="font-bold text-xs uppercase tracking-widest text-muted-foreground">
+                {RAIL_TABS.find((t) => t.id === activeTab)?.label} Settings
+              </span>
               <Button
-                variant="outline"
-                disabled={step === 0}
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="h-11 rounded-xl"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-lg"
+                onClick={() => setPanelOpen(false)}
+                title="Collapse Panel"
               >
-                Previous
+                <ArrowLeft className="h-4 w-4" />
               </Button>
-              {step < STEPS.length - 1 ? (
-                <Button
-                  onClick={() => {
-                    saveResume(resume);
-                    setStep((s) => s + 1);
-                  }}
-                  className="h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90"
-                >
-                  Save & Continue
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSave}
-                  className="h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90"
-                >
-                  Finish
-                </Button>
+            </div>
+
+            {/* Panel Content (Scrollable) */}
+            <div
+              className={cn(
+                "flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin select-text",
+                mobileView === "preview" ? "hidden lg:block" : "block",
               )}
+            >
+              {renderPanelContent()}
             </div>
 
-            {/* Mobile bottom live preview — lets users see what they are making in real-time as they edit, without forcing tab switching */}
-            <div className="mt-8 pt-6 border-t border-border/60 lg:hidden">
-              <div className="mb-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Live Preview
-              </div>
-              <div className="rounded-xl border border-border bg-card p-2 shadow-sm overflow-hidden">
-                <ResumePreview
-                  data={resume.data}
-                  template={resume.template}
-                  pdfBase64={pdfBase64}
-                  forceTemplatePreview={resume.data.isVisualMode === false}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Preview Panel — always visible on desktop, toggled on mobile */}
-          <aside className={cn(mobilePanel === "edit" ? "hidden lg:block" : "block")}>
-            <div className="sticky top-24 space-y-4">
-              {/* Customization controls */}
-              {resume.data.isVisualMode !== false && resume.data.importedLayout ? (
-                <div className="rounded-2xl border border-brand/20 bg-brand-soft/20 p-5 shadow-soft text-center space-y-3">
-                  <div className="font-bold text-brand-dark text-sm flex items-center justify-center gap-1.5">
-                    <Sparkles className="h-4 w-4" /> Visual Edit Mode
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Layout options, colors, and font sizes are locked to match your uploaded PDF
-                    exactly.
-                  </p>
+            {/* Mobile Preview Pane */}
+            {mobileView === "preview" && (
+              <div className="flex-1 bg-muted/20 overflow-y-auto flex flex-col items-center p-4 lg:hidden">
+                {/* Mobile Preview Zoom Control Bar */}
+                <div className="flex items-center gap-3 bg-card border border-border px-3 py-1 rounded-xl mb-3 shadow-xs shrink-0 select-none">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full h-9 rounded-xl text-xs font-bold bg-background hover:bg-brand-soft border-brand/35 text-brand cursor-pointer"
-                    onClick={() => update({ isVisualMode: false })}
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                    disabled={zoom <= 0.5}
+                    title="Zoom Out"
                   >
-                    Switch to Dynamic Template Mode
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-xs font-mono font-bold w-10 text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={() => setZoom((z) => Math.min(2.0, z + 0.1))}
+                    disabled={zoom >= 2.0}
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="h-4 w-px bg-border mx-0.5" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground font-semibold"
+                    onClick={() => setZoom(1.0)}
+                  >
+                    Reset
                   </Button>
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-soft space-y-5">
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">Layout Template</h3>
-                    <div className="mt-2.5 grid grid-cols-2 gap-2">
-                      {(
-                        ["ats-professional", "modern", "minimal", "creative", "two-column"] as const
-                      ).map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => {
-                            setResume((r) => (r ? { ...r, template: t } : null));
-                            saveResume({ ...resume, template: t });
-                          }}
-                          className={cn(
-                            "rounded-xl border px-3 py-2 text-center text-xs font-semibold capitalize transition-all",
-                            resume.template === t
-                              ? "border-brand bg-brand-soft text-brand shadow-sm"
-                              : "border-border bg-background text-muted-foreground hover:border-brand/40 hover:text-foreground",
-                          )}
-                        >
-                          {t.replace("-", " ")}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div className="h-px bg-border" />
-
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">Accent Color</h3>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {[
-                        { name: "Brand", value: "" },
-                        { name: "Ocean", value: "#0284c7" },
-                        { name: "Emerald", value: "#059669" },
-                        { name: "Indigo", value: "#4f46e5" },
-                        { name: "Amber", value: "#d97706" },
-                        { name: "Crimson", value: "#dc2626" },
-                        { name: "Slate", value: "#475569" },
-                      ].map((col) => (
-                        <button
-                          key={col.name}
-                          onClick={() => updateCustomization({ accentColor: col.value })}
-                          className={cn(
-                            "flex h-7 items-center justify-center rounded-lg border px-2.5 text-[11px] font-semibold transition-all",
-                            (resume.data.customization?.accentColor ?? "") === col.value
-                              ? "border-brand bg-brand-soft text-brand font-bold"
-                              : "border-border bg-background text-muted-foreground hover:bg-muted",
-                          )}
-                        >
-                          {col.value ? (
-                            <span
-                              className="mr-1 h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: col.value }}
-                            />
-                          ) : (
-                            <span className="mr-1 h-2.5 w-2.5 rounded-full bg-brand" />
-                          )}
-                          {col.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-border" />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Font Size</h3>
-                      <div className="mt-2.5 flex gap-1.5">
-                        {(["sm", "md", "lg"] as const).map((sz) => (
-                          <button
-                            key={sz}
-                            onClick={() => updateCustomization({ fontSize: sz })}
-                            className={cn(
-                              "flex-1 rounded-lg border py-1.5 text-center text-xs font-semibold capitalize transition-all",
-                              (resume.data.customization?.fontSize ?? "md") === sz
-                                ? "border-brand bg-brand-soft text-brand"
-                                : "border-border bg-background text-muted-foreground hover:bg-muted",
-                            )}
-                          >
-                            {sz === "sm" ? "Small" : sz === "md" ? "Medium" : "Large"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Spacing</h3>
-                      <div className="mt-2.5 flex gap-1.5">
-                        {(["sm", "md", "lg"] as const).map((sp) => (
-                          <button
-                            key={sp}
-                            onClick={() => updateCustomization({ spacing: sp })}
-                            className={cn(
-                              "flex-1 rounded-lg border py-1.5 text-center text-xs font-semibold capitalize transition-all",
-                              (resume.data.customization?.spacing ?? "md") === sp
-                                ? "border-brand bg-brand-soft text-brand"
-                                : "border-border bg-background text-muted-foreground hover:bg-muted",
-                            )}
-                          >
-                            {sp === "sm" ? "Compact" : sp === "md" ? "Normal" : "Relaxed"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                {/* Scaled Preview Sheet */}
+                <div
+                  className="relative overflow-hidden shadow-xl rounded-xl border border-border bg-card shrink-0"
+                  style={{
+                    width: `${794 * 0.44 * zoom}px`,
+                    height: `${1123 * 0.44 * zoom}px`,
+                  }}
+                >
+                  <div
+                    className="absolute left-0 top-0 select-text origin-top-left"
+                    style={{
+                      transform: `scale(${0.44 * zoom})`,
+                      width: "794px",
+                      height: "1123px",
+                    }}
+                  >
+                    <ResumePreview
+                      data={resume.data}
+                      template={resume.template}
+                      pdfBase64={pdfBase64}
+                      forceTemplatePreview={resume.data.isVisualMode === false}
+                    />
                   </div>
                 </div>
-              )}
 
-              {/* Preview canvas */}
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-                {/* Header + tab toggle */}
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Live Preview
-                  </div>
-                  {resume.data.importedLayout ? (
-                    <div className="flex items-center rounded-xl border border-border bg-muted/50 p-0.5 gap-0.5">
-                      <button
-                        onClick={() => setPreviewTab("visual")}
-                        className={cn(
-                          "flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all cursor-pointer",
-                          previewTab === "visual"
-                            ? "bg-background text-brand shadow-xs"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                        title="Original PDF Canvas — visual edits only"
-                      >
-                        📄 Visual PDF
-                      </button>
-                      <button
-                        onClick={() => setPreviewTab("template")}
-                        className={cn(
-                          "flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all cursor-pointer",
-                          previewTab === "template"
-                            ? "bg-background text-brand shadow-xs"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                        title="Template Preview — shows all form edits live"
-                      >
-                        ✨ Template
-                      </button>
-                    </div>
-                  ) : (
-                    resume.data.isVisualMode !== false &&
-                    resume.data.importedLayout && (
-                      <span className="text-[10px] text-brand bg-brand-soft px-2 py-0.5 rounded-full font-bold">
-                        ✏️ Click to Edit Text
-                      </span>
-                    )
-                  )}
+                {/* Download Actions (Always handy under preview) */}
+                <div className="w-full max-w-xs flex flex-col gap-2 shrink-0 pb-6 mt-6">
+                  <Button
+                    onClick={handleDownloadClick}
+                    disabled={pdfBusy}
+                    className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm animate-fade-in"
+                  >
+                    {pdfBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    Download PDF
+                  </Button>
+                  <Button
+                    onClick={handleDocx}
+                    disabled={docxBusy}
+                    variant="outline"
+                    className="w-full h-11 rounded-xl border-border bg-card text-foreground hover:bg-muted font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm animate-fade-in"
+                  >
+                    {docxBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="h-4 w-4" />
+                    )}
+                    Export DOCX
+                  </Button>
                 </div>
-                {previewTab === "template" && resume.data.importedLayout && (
-                  <div className="mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                    ✅ Showing live form data — all your edits (projects, experience, etc.) appear
-                    here
-                  </div>
+              </div>
+            )}
+
+            {/* Step Navigation Footer (Visible if edit view is active OR if we are on desktop) */}
+            {(mobileView === "edit" || activeTab === "review") && showStepFooter && (
+              <div
+                className={cn(
+                  "border-t border-border p-4 bg-muted/10 shrink-0 flex items-center justify-between",
+                  mobileView === "preview" ? "hidden lg:flex" : "flex",
                 )}
+              >
+                <Button
+                  variant="outline"
+                  disabled={step === 0}
+                  onClick={() => changeStep(Math.max(0, step - 1))}
+                  className="h-9 rounded-lg text-xs"
+                >
+                  Previous
+                </Button>
+                {step < STEPS.length - 1 ? (
+                  <Button
+                    onClick={() => {
+                      saveResume(resume);
+                      changeStep(step + 1);
+                    }}
+                    className="h-9 rounded-lg bg-brand text-brand-foreground hover:bg-brand/90 text-xs font-bold"
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSave}
+                    className="h-9 rounded-lg bg-brand text-brand-foreground hover:bg-brand/90 text-xs font-bold"
+                  >
+                    Finish
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Central Workspace (Canvas) - Desktop only (or hidden on mobile, since PiP and drawer handle preview) */}
+          <div className="hidden lg:flex flex-1 bg-muted/20 overflow-auto flex-col p-8 items-center relative">
+            {/* Visual edit status message */}
+            <div className="mb-4 bg-card/65 backdrop-blur-sm border border-border px-4 py-1.5 rounded-full shadow-xs flex items-center gap-2 text-[11px] shrink-0">
+              <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+              <span className="font-semibold text-muted-foreground">
+                {resume.data.isVisualMode !== false && resume.data.importedLayout
+                  ? "Visual Edit Mode: Click text items in preview to edit directly"
+                  : "Template Auto-layout Mode: Active"}
+              </span>
+            </div>
+
+            {/* Document Canvas Sheet container */}
+            <div
+              className="flex-1 flex justify-center items-start origin-top relative"
+              style={{
+                width: `${794 * zoom}px`,
+                height: `${1123 * zoom}px`,
+              }}
+            >
+              <div
+                className="bg-card shadow-2xl border border-border select-text"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "top left",
+                  width: "794px",
+                  minHeight: "1123px",
+                }}
+              >
                 <ResumePreview
                   data={resume.data}
                   template={resume.template}
@@ -887,7 +1172,7 @@ function EditorPage() {
                 />
               </div>
             </div>
-          </aside>
+          </div>
         </div>
       </div>
 
@@ -903,6 +1188,41 @@ function EditorPage() {
         resume={resume}
         onDownload={handlePdf}
       />
+
+      {/* Slide-up Live Preview Sheet */}
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DrawerContent className="h-[92vh] max-h-[92vh] flex flex-col bg-background">
+          <DrawerHeader className="border-b pb-3 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="text-left">
+                <DrawerTitle className="text-base font-bold text-foreground">
+                  Resume Live Preview
+                </DrawerTitle>
+                <DrawerDescription className="text-xs text-muted-foreground">
+                  Inspect details, layout spacing, and template designs
+                </DrawerDescription>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs font-bold">
+                  Done
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+
+          {/* Scrollable preview body */}
+          <div className="flex-1 overflow-y-auto p-4 bg-muted/30 flex justify-center">
+            <div className="w-full max-w-2xl bg-card rounded-xl p-2 shadow-sm">
+              <ResumePreview
+                data={resume.data}
+                template={resume.template}
+                pdfBase64={pdfBase64}
+                forceTemplatePreview={resume.data.isVisualMode === false}
+              />
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </AppShell>
   );
 }

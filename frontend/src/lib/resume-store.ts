@@ -1,12 +1,6 @@
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getStorageKey,
-  storageGet,
-  storageSet,
-  storageRemove,
-  ANON_ID,
-} from "@/lib/storage";
+import { getStorageKey, storageGet, storageSet, storageRemove, ANON_ID } from "@/lib/storage";
 
 export type ProfileType = "fresh" | "experienced" | "internship" | "academic" | "custom";
 export type TemplateId = "ats-professional" | "modern" | "minimal" | "creative" | "two-column";
@@ -253,11 +247,7 @@ export async function deleteResume(id: string) {
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user && isUUID(id)) {
-      await supabase
-        .from("resumes")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", session.user.id); // Ownership check
+      await supabase.from("resumes").delete().eq("id", id).eq("user_id", session.user.id); // Ownership check
     }
   } catch (err) {
     console.warn("[resume-store] Supabase delete error:", err);
@@ -505,9 +495,7 @@ export function dataFromProfile(
     experience: opts.include.experience
       ? pickExp.map((i) => profile.experience[i]).filter(Boolean)
       : [],
-    projects: opts.include.projects
-      ? pickProj.map((i) => profile.projects[i]).filter(Boolean)
-      : [],
+    projects: opts.include.projects ? pickProj.map((i) => profile.projects[i]).filter(Boolean) : [],
     skills: opts.include.skills ? profile.skills : [],
     certifications: profile.certifications
       ? profile.certifications
@@ -521,9 +509,7 @@ export function dataFromProfile(
           .filter(Boolean)
       : [],
     languages: profile.languages
-      ? profile.languages
-          .map((l) => (l.level ? `${l.name} (${l.level})` : l.name))
-          .filter(Boolean)
+      ? profile.languages.map((l) => (l.level ? `${l.name} (${l.level})` : l.name)).filter(Boolean)
       : [],
     achievements: profile.achievements
       ? profile.achievements

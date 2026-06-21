@@ -29,6 +29,26 @@ const LOCAL_CITIES = [
 
 const apiCache = new Map<string, string[]>();
 
+interface NominatimAddress {
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  suburb?: string;
+  city_district?: string;
+  state?: string;
+  region?: string;
+  province?: string;
+  country?: string;
+}
+
+interface NominatimSearchResult {
+  address?: NominatimAddress;
+  type?: string;
+  class?: string;
+  display_name?: string;
+}
+
 interface LocationInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   "value" | "onChange"
@@ -93,8 +113,8 @@ export function LocationInput({
         if (!res.ok) return;
         const data = await res.json();
 
-        const apiSuggestions = data
-          .map((item: any) => {
+        const apiSuggestions = (data as NominatimSearchResult[])
+          .map((item) => {
             const addr = item.address;
             if (!addr) return null;
 
@@ -127,7 +147,9 @@ export function LocationInput({
             }
             return null;
           })
-          .filter((val): val is string => val !== null);
+          .filter(
+            (val: string | null | undefined): val is string => val !== null && val !== undefined,
+          );
 
         // Store results in memory cache
         apiCache.set(cacheKey, apiSuggestions);

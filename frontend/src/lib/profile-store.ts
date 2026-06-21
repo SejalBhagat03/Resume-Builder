@@ -169,8 +169,9 @@ export function useProfile(): [Profile, (updater: (p: Profile) => Profile) => vo
 
     return () => {
       active = false;
-      const cleanup = (window as unknown as Record<string, unknown>)
-        .__rbpProfileCleanup as (() => void) | undefined;
+      const cleanup = (window as unknown as Record<string, unknown>).__rbpProfileCleanup as
+        | (() => void)
+        | undefined;
       cleanup?.();
     };
   }, []);

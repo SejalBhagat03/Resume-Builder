@@ -148,6 +148,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return "U";
   };
 
+  if (isEditorPage) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-background">
+        <main className="flex-1 h-full overflow-hidden flex flex-col">{children}</main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Desktop: fixed narrow Canva-style rail */}

@@ -20,7 +20,11 @@ export function ReviewPanel({ resume, jd }: { resume: Resume; jd?: string }) {
       <div className="grid grid-cols-2 gap-2">
         <MetricCard label="ATS Score" value={`${report.atsScore}%`} pct={report.atsScore} />
         <MetricCard label="Readability" value={`${report.readability}%`} pct={report.readability} />
-        <MetricCard label="Keywords" value={`${report.keywordCoverage}%`} pct={report.keywordCoverage} />
+        <MetricCard
+          label="Keywords"
+          value={`${report.keywordCoverage}%`}
+          pct={report.keywordCoverage}
+        />
         <MetricCard label="Est. Pages" value={`${report.estPages}`} />
       </div>
 

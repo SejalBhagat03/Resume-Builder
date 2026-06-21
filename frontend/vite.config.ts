@@ -15,4 +15,11 @@ export default defineConfig({
   nitro: {
     preset: "vercel",
   },
+  vite: {
+    resolve: {
+      alias: {
+        html2canvas: "html2canvas-pro",
+      },
+    },
+  },
 });

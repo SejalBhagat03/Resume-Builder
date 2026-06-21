@@ -33,6 +33,7 @@ type Props = {
   onOpenChange: (o: boolean) => void;
   resume: Resume;
   onApply: (next: Resume) => void;
+  inline?: boolean;
 };
 
 /** Build a plain text representation of the resume for AI calls */
@@ -53,7 +54,7 @@ function resumeToText(resume: Resume): string {
   ].join("\n");
 }
 
-export function AiAssistantPanel({ open, onOpenChange, resume, onApply }: Props) {
+export function AiAssistantPanel({ open, onOpenChange, resume, onApply, inline = false }: Props) {
   const [profile] = useProfile();
   const [jd, setJd] = React.useState("");
 
@@ -158,15 +159,15 @@ export function AiAssistantPanel({ open, onOpenChange, resume, onApply }: Props)
     }
   };
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl border-l border-border">
-        <SheetHeader>
+  const content = (
+    <div className="flex flex-col h-full bg-card">
+      {!inline && (
+        <SheetHeader className="mb-4">
           <div className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
               <Sparkles className="h-4.5 w-4.5" />
             </div>
-            <div>
+            <div className="text-left">
               <SheetTitle className="text-base font-bold">AI Resume Assistant</SheetTitle>
               <SheetDescription className="text-xs">
                 Powered by Google Gemini. Suggestions you decide what to keep.
@@ -174,20 +175,36 @@ export function AiAssistantPanel({ open, onOpenChange, resume, onApply }: Props)
             </div>
           </div>
         </SheetHeader>
+      )}
 
-        <Tabs defaultValue="optimize" className="mt-5">
+      {inline && (
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border bg-muted/20 shrink-0 select-none">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand shrink-0">
+            <Sparkles className="h-4.5 w-4.5" />
+          </div>
+          <div className="text-left">
+            <h3 className="text-sm font-bold text-foreground">AI Resume Assistant</h3>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
+              Powered by Google Gemini. Suggestions you decide what to keep.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex-1 ${inline ? "overflow-y-auto p-4 scrollbar-thin" : ""}`}>
+        <Tabs defaultValue="optimize" className="w-full">
           <TabsList className="grid w-full grid-cols-4 rounded-xl">
-            <TabsTrigger value="optimize" className="rounded-lg text-[10px] md:text-xs">
-              <Wand2 className="mr-1 h-3.5 w-3.5" /> Optimize
+            <TabsTrigger value="optimize" className="rounded-lg text-[9px] md:text-xs">
+              Optimize
             </TabsTrigger>
-            <TabsTrigger value="match" className="rounded-lg text-[10px] md:text-xs">
-              <Briefcase className="mr-1 h-3.5 w-3.5" /> Match JD
+            <TabsTrigger value="match" className="rounded-lg text-[9px] md:text-xs">
+              Match JD
             </TabsTrigger>
-            <TabsTrigger value="review" className="rounded-lg text-[10px] md:text-xs">
-              <FileSearch className="mr-1 h-3.5 w-3.5" /> Review
+            <TabsTrigger value="review" className="rounded-lg text-[9px] md:text-xs">
+              Review
             </TabsTrigger>
-            <TabsTrigger value="interview" className="rounded-lg text-[10px] md:text-xs">
-              <MessageCircleQuestion className="mr-1 h-3.5 w-3.5" /> Interview
+            <TabsTrigger value="interview" className="rounded-lg text-[9px] md:text-xs">
+              Interview
             </TabsTrigger>
           </TabsList>
 
@@ -218,7 +235,7 @@ export function AiAssistantPanel({ open, onOpenChange, resume, onApply }: Props)
 
           {/* ── Match JD ── */}
           <TabsContent value="match" className="mt-4 space-y-3">
-            <div>
+            <div className="text-left">
               <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Paste a job description
               </label>
@@ -255,6 +272,16 @@ export function AiAssistantPanel({ open, onOpenChange, resume, onApply }: Props)
             <InterviewQuestionsPanel resume={resume} jd={jd} />
           </TabsContent>
         </Tabs>
+      </div>
+    </div>
+  );
+
+  if (inline) return content;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-xl border-l border-border p-5">
+        {content}
       </SheetContent>
     </Sheet>
   );

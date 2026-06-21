@@ -967,7 +967,7 @@ export function ResumePreview({
 
   const renderSummary = () =>
     data.summary && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-summary" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Summary
         </h2>
@@ -977,7 +977,7 @@ export function ResumePreview({
 
   const renderExperience = () =>
     data.experience.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-experience" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Experience
         </h2>
@@ -1005,7 +1005,7 @@ export function ResumePreview({
 
   const renderEducation = () =>
     data.education.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-education" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Education
         </h2>
@@ -1024,7 +1024,7 @@ export function ResumePreview({
 
   const renderProjects = () =>
     data.projects.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-projects" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Projects
         </h2>
@@ -1049,7 +1049,7 @@ export function ResumePreview({
 
   const renderSkills = () =>
     data.skills.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-skills" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Skills
         </h2>
@@ -1067,7 +1067,7 @@ export function ResumePreview({
   const renderCertifications = () =>
     data.certifications &&
     data.certifications.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-certifications" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Certifications
         </h2>
@@ -1084,7 +1084,7 @@ export function ResumePreview({
   const renderAchievements = () =>
     data.achievements &&
     data.achievements.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-achievements" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Achievements
         </h2>
@@ -1101,7 +1101,7 @@ export function ResumePreview({
   const renderLanguages = () =>
     data.languages &&
     data.languages.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-languages" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Languages
         </h2>
@@ -1112,7 +1112,7 @@ export function ResumePreview({
   const renderPublications = () =>
     data.publications &&
     data.publications.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-publications" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Publications
         </h2>
@@ -1129,7 +1129,7 @@ export function ResumePreview({
   const renderVolunteer = () =>
     data.volunteer &&
     data.volunteer.length > 0 && (
-      <div className={spacingClass.itemSpacing}>
+      <div id="preview-section-volunteer" className={spacingClass.itemSpacing}>
         <h2 className={sizeClass.section} style={{ color: accent }}>
           Volunteer & Leadership
         </h2>
