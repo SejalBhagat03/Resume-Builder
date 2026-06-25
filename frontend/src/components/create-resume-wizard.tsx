@@ -428,6 +428,29 @@ export function CreateResumeWizard({
 
   const navigate = useNavigate();
 
+  const isNextDisabled = React.useMemo(() => {
+    if (step === 2) {
+      if (source === "import") {
+        return !selectedFile && !importedFileName;
+      }
+      if (source === "github") {
+        return ghProjects.length === 0 || !ghUsername.trim();
+      }
+      if (source === "profile") {
+        return !profileData.fullName;
+      }
+    }
+    return false;
+  }, [
+    step,
+    source,
+    selectedFile,
+    importedFileName,
+    ghProjects.length,
+    ghUsername,
+    profileData.fullName,
+  ]);
+
   // Initialize reordering lists and source defaults when open changes
   React.useEffect(() => {
     if (open) {
@@ -627,7 +650,7 @@ export function CreateResumeWizard({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg sm:max-w-4xl gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border-border p-0">
+        <DialogContent className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg sm:max-w-4xl gap-0 overflow-hidden rounded-2xl sm:rounded-3xl border-border p-0 max-h-[calc(100vh-2rem)] sm:max-h-[90vh] flex flex-col">
           <DialogHeader className="space-y-0.5 px-3 sm:px-7 pt-3 sm:pt-7">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="grid h-8 w-8 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-brand-soft text-brand">
@@ -646,7 +669,7 @@ export function CreateResumeWizard({
 
           <Stepper step={step} />
 
-          <div className="max-h-[50vh] sm:max-h-[60vh] overflow-y-auto px-3 sm:px-7 pb-3 sm:pb-6 bg-background/50">
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-7 pb-3 sm:pb-6 bg-background/50">
             {step === 1 && (
               <section className="animate-fade-in space-y-4">
                 <StepHeader
@@ -654,7 +677,7 @@ export function CreateResumeWizard({
                   title="What are you creating?"
                   sub="Select the profile type that best describes you."
                 />
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="mt-5 grid gap-3 sm:grid-cols-5">
                   {profileOptions.map((opt) => (
                     <SelectCard
                       key={opt.id}
@@ -1229,7 +1252,7 @@ export function CreateResumeWizard({
                     sub="Pick a starting source for your resume content."
                   />
 
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                     {sourceOptions.map((opt) => {
                       const profileEmpty = opt.id === "profile" && !profileData.fullName;
                       return (
@@ -1339,11 +1362,18 @@ export function CreateResumeWizard({
                           <div>
                             <div className="text-xs font-bold text-brand">
                               Career Profile Connected
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-                              {profileData.fullName
-                                ? `Pulling details for ${profileData.fullName} (${profileCompleteness(profileData)}% complete)`
-                                : "Your Career Profile is empty. Fill it to auto-generate your resume!"}
+                              <div
+                                className={cn(
+                                  "text-[10px] sm:text-xs mt-0.5",
+                                  !profileData.fullName
+                                    ? "text-destructive font-semibold"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {profileData.fullName
+                                  ? `Pulling details for ${profileData.fullName} (${profileCompleteness(profileData)}% complete)`
+                                  : "Your Career Profile is empty. Please set up your details below to proceed."}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1364,7 +1394,7 @@ export function CreateResumeWizard({
               ))}
 
             {step === 3 && (
-              <section className="animate-fade-in">
+              <section className="animate-fade-in pb-8">
                 {source === "profile" ? (
                   /* Double Column Layout when pulling from profile */
                   <div className="grid gap-6 md:grid-cols-12">
@@ -1456,7 +1486,7 @@ export function CreateResumeWizard({
                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             Experience Order
                           </Label>
-                          <ul className="space-y-1.5 max-h-[140px] overflow-y-auto">
+                          <ul className="space-y-1.5 max-h-[110px] overflow-y-auto">
                             {expOrder.map((origIdx, i) => (
                               <li
                                 key={origIdx}
@@ -1503,7 +1533,7 @@ export function CreateResumeWizard({
                           <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             Project Order
                           </Label>
-                          <ul className="space-y-1.5 max-h-[140px] overflow-y-auto">
+                          <ul className="space-y-1.5 max-h-[110px] overflow-y-auto">
                             {projectOrder.map((origIdx, i) => (
                               <li
                                 key={origIdx}
@@ -1554,7 +1584,7 @@ export function CreateResumeWizard({
                           {TEMPLATES.length} templates
                         </span>
                       </div>
-                      <div className="grid gap-3 grid-cols-2 max-h-[220px] sm:max-h-[400px] overflow-y-auto pr-1 pb-6">
+                      <div className="grid gap-3 grid-cols-2 max-h-[220px] sm:max-h-[320px] overflow-y-auto pr-1 pb-6">
                         {TEMPLATES.map((t) => {
                           const isSelected = template === t.id;
                           return (
@@ -1785,7 +1815,8 @@ export function CreateResumeWizard({
                 {step < 3 ? (
                   <Button
                     onClick={next}
-                    className="h-9 sm:h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-4 sm:px-5 text-sm font-bold cursor-pointer"
+                    disabled={isNextDisabled}
+                    className="h-9 sm:h-11 rounded-xl bg-brand text-brand-foreground hover:bg-brand/90 px-4 sm:px-5 text-sm font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next <ArrowRight className="ml-1 h-3.5 w-3.5 sm:ml-1.5 sm:h-4 sm:w-4" />
                   </Button>
@@ -1898,7 +1929,7 @@ function SelectCard({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "group relative flex flex-row sm:flex-col items-center gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl border-2 bg-card p-2.5 sm:p-4 text-left sm:text-center transition-all cursor-pointer min-h-0 sm:min-h-[155px] justify-start sm:justify-center w-full",
+        "group relative flex flex-row sm:flex-col items-center gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl border-2 bg-card p-2.5 sm:p-3 text-left sm:text-center transition-all cursor-pointer min-h-0 sm:min-h-[135px] justify-start sm:justify-center w-full",
         active
           ? "border-brand bg-brand-soft/40 shadow-soft"
           : "border-border hover:border-brand/40 hover:bg-muted/40",

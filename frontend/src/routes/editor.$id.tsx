@@ -80,7 +80,10 @@ const STEPS = [
   { key: "experience", label: "Experience", icon: Briefcase },
   { key: "projects", label: "Projects", icon: FolderGit2 },
   { key: "skills", label: "Skills", icon: Wrench },
-  { key: "review", label: "Review", icon: Sparkles },
+  { key: "additional", label: "Additional Info", icon: Plus },
+  { key: "design", label: "Design", icon: Palette },
+  { key: "ai", label: "Gemini AI", icon: Sparkles },
+  { key: "review", label: "Review", icon: CheckCircle2 },
 ] as const;
 
 function EditorPage() {
@@ -306,6 +309,8 @@ function EditorPage() {
     } else if (step === 4) {
       targetId = "preview-section-skills";
     } else if (step === 5) {
+      targetId = "preview-section-certifications";
+    } else {
       targetId = "preview-canvas-container";
     }
 
@@ -470,6 +475,7 @@ function EditorPage() {
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "projects", label: "Projects", icon: FolderGit2 },
     { id: "skills", label: "Skills", icon: Wrench },
+    { id: "additional", label: "Additional", icon: Plus },
     { id: "design", label: "Design", icon: Palette },
     { id: "ai", label: "Gemini AI", icon: Sparkles },
     { id: "review", label: "Review", icon: CheckCircle2 },
@@ -485,8 +491,6 @@ function EditorPage() {
       const stepIdx = STEPS.findIndex((s) => s.key === tabId);
       if (stepIdx >= 0) {
         setStep(stepIdx);
-      } else if (tabId === "review") {
-        setStep(5);
       }
     }
   };
@@ -494,10 +498,8 @@ function EditorPage() {
   const changeStep = (newStep: number) => {
     setMobileView("edit");
     setStep(newStep);
-    if (newStep >= 0 && newStep < 5) {
+    if (newStep >= 0 && newStep < STEPS.length) {
       setActiveTab(STEPS[newStep].key);
-    } else if (newStep === 5) {
-      setActiveTab("review");
     }
     setPanelOpen(true);
   };
@@ -670,6 +672,9 @@ function EditorPage() {
     if (activeTab === "skills") {
       return <SkillsStep data={resume.data} update={update} />;
     }
+    if (activeTab === "additional") {
+      return <AdditionalStep data={resume.data} update={update} />;
+    }
     if (activeTab === "design") {
       return renderDesignPanel();
     }
@@ -705,6 +710,9 @@ function EditorPage() {
     "experience",
     "projects",
     "skills",
+    "additional",
+    "design",
+    "ai",
     "review",
   ].includes(activeTab);
 
